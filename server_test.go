@@ -26,5 +26,24 @@ func TestGetHealth(t *testing.T) {
 		if res.StatusCode != http.StatusOK {
 			t.Errorf("Statuscode: got %d, want %d", res.StatusCode, http.StatusOK)
 		}
+
+	})
+	t.Run("returns answer", func(t *testing.T) {
+		test_id_answer := data["1"]
+		url_ending := "/answer?id=" + "1" // test if map key "1" returns correct Value
+		request, _ := http.NewRequest(http.MethodGet, url_ending, nil)
+		response := httptest.NewRecorder()
+
+		getAnswer(response, request)
+
+		got := response.Body.String()
+		want := test_id_answer
+
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+		res := response.Result() // echtes *http.Response Objekt
+		defer res.Body.Close()
+
 	})
 }
