@@ -28,6 +28,9 @@ func TestGetHealth(t *testing.T) {
 		}
 
 	})
+
+}
+func TestGetAnswer(t *testing.T) {
 	t.Run("returns answer", func(t *testing.T) {
 		test_id_answer := data["1"]
 		url_ending := "/answer?id=" + "1" // test if map key "1" returns correct Value

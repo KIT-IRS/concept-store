@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
 )
 
-// Port wird festgelegt
+// define PORT
 const PORT = "3737"
 
 func getHealth(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +56,38 @@ func main() {
 	mux.HandleFunc("/answer", getAnswer)
 	mux.HandleFunc("/", getRoot)
 
-	fmt.Printf("Health server unter http://localhost:%s/health\n", PORT)
-	fmt.Printf("Dictionary unter http://localhost:%s/answer?id=x\n", PORT)
-	http.ListenAndServe(":"+PORT, mux)
+	server := &http.Server{
+		Addr:    ":" + PORT,
+		Handler: mux,
+
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+
+		MaxHeaderBytes: 512 * 1024, // 512 KB
+	}
+	// channel for graceful shutdown
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+
+	go func() {
+		fmt.Printf("Server läuft unter http://localhost:%s\n", PORT)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("Server error: %s\n", err)
+		}
+	}()
+
+	// wait for shutdown signal
+	<-stop
+	fmt.Println("\nShutdown initiated...")
+
+	// context for shutdown with 5s grace period
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		fmt.Printf("Error shutting down: %s\n", err)
+	} else {
+		fmt.Println("Server successfully shut down.")
+	}
 }
