@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,6 +16,8 @@ const PORT = "3737"
 func getHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "OK")
+
+	w.Header().Set("Cache-Control", "no-store")
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -45,9 +48,13 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, val)
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"id":     id,
+		"answer": val,
+	})
 }
 
 func main() {
