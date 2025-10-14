@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 	"os"
@@ -47,14 +48,30 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	format := r.URL.Query().Get("format")
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	switch format {
+	case "xml":
+		type AnswerXML struct {
+			XMLName xml.Name `xml:"answer"`
+			ID      string   `xml:"id"`
+			Text    string   `xml:"text"`
+		}
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusOK)
+		xml.NewEncoder(w).Encode(AnswerXML{
+			ID:   id,
+			Text: val,
+		})
+	default: // JSON
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"id":     id,
+			"answer": val,
+		})
+	}
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"id":     id,
-		"answer": val,
-	})
 }
 
 func main() {
