@@ -26,9 +26,21 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "concept store")
 }
 
-var data = map[string]string{
-	"1": "Antwort 1",
-	"2": "Antwort 2",
+var Data = map[string]string{}
+
+func LoadData(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("error reading file: %w", err)
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&Data); err != nil {
+		return fmt.Errorf("error decoding json: %w", err)
+	}
+
+	return nil
 }
 
 func getAnswer(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +55,7 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val, ok := data[id]
+	val, ok := Data[id]
 	if !ok {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -75,6 +87,11 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	err := LoadData("data.json")
+	if err != nil {
+		fmt.Printf("error reading files: %s\n", err)
+		os.Exit(1)
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", getHealth)
 	mux.HandleFunc("/answer", getAnswer)
@@ -110,8 +127,8 @@ func main() {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		fmt.Printf("Error shutting down: %s\n", err)
+		fmt.Printf("error shutting down: %s\n", err)
 	} else {
-		fmt.Println("Server successfully shut down.")
+		fmt.Println("server successfully shut down.")
 	}
 }
