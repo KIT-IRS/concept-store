@@ -48,8 +48,12 @@ func newTestServer() *httptest.Server {
 // TODO: test that tests reading data file
 func TestGetAnswerJSON_Success(t *testing.T) {
 	// Data struct for testing
-	Data = map[string]map[string]string{
-		"11": {"Test": "Antwort"},
+	Data = map[string]DataOutput{
+		"11": {
+			Unit:        "Volt",
+			Value:       "5",
+			Description: "example1",
+		},
 	}
 
 	ts := newTestServer()
@@ -71,8 +75,8 @@ func TestGetAnswerJSON_Success(t *testing.T) {
 	}
 
 	var result struct {
-		ID     string `json:"id"`
-		Answer string `json:"answer"`
+		ID     string     `json:"id"`
+		Answer DataOutput `json:"answer"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatalf("error decoding JSON: %v", err)
@@ -81,7 +85,14 @@ func TestGetAnswerJSON_Success(t *testing.T) {
 	if result.ID != "11" {
 		t.Errorf("ID=%q, expected %q", result.ID, "11")
 	}
-	if result.Answer != "Test Antwort" {
-		t.Errorf("Answer=%q, expected %q", result.Answer, "Test Antwort")
+	if result.Answer.Unit != "Volt" {
+		t.Errorf("Answer.Unit=%q, expected %q", result.Answer.Unit, "Volt")
 	}
+	if result.Answer.Value != "5" {
+		t.Errorf("Answer.Value=%q, expected %q", result.Answer.Value, "5")
+	}
+	if result.Answer.Description != "example1" {
+		t.Errorf("Answer.Description=%q, expected %q", result.Answer.Description, "example1")
+	}
+
 }

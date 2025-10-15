@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,10 +15,9 @@ import (
 const PORT = "3737"
 
 func getHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "OK")
-
-	w.Header().Set("Cache-Control", "no-store")
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +25,13 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "concept store")
 }
 
-var Data = map[string]map[string]string{}
+type DataOutput struct {
+	Unit        string `json:"Unit" xml:"Unit"`
+	Value       string `json:"Value" xml:"Value"`
+	Description string `json:"Description" xml:"Description"`
+}
+
+var Data = map[string]DataOutput{}
 
 func LoadData(filename string) error {
 	file, err := os.Open(filename)
@@ -59,32 +65,30 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	format := r.URL.Query().Get("format")
 
+	format := r.URL.Query().Get("format")
 	switch format {
-	//FIXME: xml format for new data structure
-	/*	case "xml":
+	case "xml":
 		type AnswerXML struct {
-			XMLName xml.Name `xml:"answer"`
-			ID      string   `xml:"id"`
-			Text    string   `xml:"text"`
+			XMLName    xml.Name `xml:"answer"`
+			ID         string   `xml:"id"`
+			DataOutput `xml:",inline"`
 		}
+
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusOK)
-		xml.NewEncoder(w).Encode(AnswerXML{
-			ID:   id,
-			Text: val,
-		})
-	*/
+		_ = xml.NewEncoder(w).Encode(AnswerXML{ID: id, DataOutput: val})
+
 	default: // JSON
+		type resp struct {
+			ID     string     `json:"id"`
+			Answer DataOutput `json:"answer"`
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{ // TODO: make typesafe
-			"id":     id,
-			"answer": val,
-		})
+		_ = json.NewEncoder(w).Encode(resp{ID: id, Answer: val})
 	}
-
 }
 
 func main() {
