@@ -129,6 +129,6 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		fmt.Printf("error shutting down: %s\n", err)
 	} else {
-		fmt.Println("server successfully shut down.")
+		fmt.Printf("server successfully shut down.")
 	}
 }
