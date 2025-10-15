@@ -1,5 +1,12 @@
 {
-  "1": "Antwort 1",
-  "2": "Antwort 2",
-  "3": "Antwort 3"
+  "1": {
+    "Unit": "Volt",
+    "Value": "5",
+    "Description": "example1"
+  },
+  "2": {
+    "Unit": "Ampere",
+    "Value": "3",
+    "Description": "example2"
+  }
 }

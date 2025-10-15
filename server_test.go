@@ -43,11 +43,13 @@ func newTestServer() *httptest.Server {
 }
 
 // TestGetAnswerJSON_Success tests whether a valid json is put out
+// does not test data.json
+
 // TODO: test that tests reading data file
 func TestGetAnswerJSON_Success(t *testing.T) {
 	// Data struct for testing
-	Data = map[string]string{
-		"11": "Test Antwort",
+	Data = map[string]map[string]string{
+		"11": {"Test": "Antwort"},
 	}
 
 	ts := newTestServer()

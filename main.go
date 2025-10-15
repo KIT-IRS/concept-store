@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"net/http"
 	"os"
@@ -26,7 +25,7 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "concept store")
 }
 
-var Data = map[string]string{}
+var Data = map[string]map[string]string{}
 
 func LoadData(filename string) error {
 	file, err := os.Open(filename)
@@ -63,7 +62,8 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 	format := r.URL.Query().Get("format")
 
 	switch format {
-	case "xml":
+	//FIXME: xml format for new data structure
+	/*	case "xml":
 		type AnswerXML struct {
 			XMLName xml.Name `xml:"answer"`
 			ID      string   `xml:"id"`
@@ -75,10 +75,11 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 			ID:   id,
 			Text: val,
 		})
+	*/
 	default: // JSON
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{
+		json.NewEncoder(w).Encode(map[string]any{ // TODO: make typesafe
 			"id":     id,
 			"answer": val,
 		})
