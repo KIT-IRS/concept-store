@@ -92,7 +92,7 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	err := LoadData("data.json")
+	err := LoadData("data.json") // load file "data.json"
 	if err != nil {
 		fmt.Printf("error reading files: %s\n", err)
 		os.Exit(1)
@@ -134,6 +134,6 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		fmt.Printf("error shutting down: %s\n", err)
 	} else {
-		fmt.Printf("server successfully shut down.")
+		fmt.Println("server successfully shut down.")
 	}
 }

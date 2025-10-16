@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -71,8 +72,6 @@ func getTestData() map[string]DataOutput {
 
 // TestGetAnswerJSON_Success tests whether a valid json is put out
 // does not test data.json
-
-// TODO: test that tests reading data file
 
 // happy path
 func TestGetAnswerJSON_Success(t *testing.T) {
@@ -172,5 +171,44 @@ func TestGetAnswer_WrongMethod(t *testing.T) {
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestLoadData(t *testing.T) {
+	testData := getTestData()
+
+	// create temporary file
+	tmpFile, err := os.CreateTemp("", "testdata*.json")
+	if err != nil {
+		t.Fatalf("error creating temporary file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name()) // remove temporary file after test
+
+	// write Data to file
+	encoder := json.NewEncoder(tmpFile)
+	if err := encoder.Encode(testData); err != nil {
+		t.Fatalf("error writing testdata to file: %v", err)
+	}
+	tmpFile.Close()
+
+	// load temporary file
+	err = LoadData(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("LoadData function gave an error: %v", err)
+	}
+
+	// check loaded Data
+	got, ok := Data["11"]
+	if !ok {
+		t.Fatalf("error could not find ID")
+	}
+	if got.Unit != "Volt" {
+		t.Errorf("error loaded Unit does not match: %v", got)
+	}
+	if got.Value != "5" {
+		t.Errorf("error loaded Value does not match: %v", got)
+	}
+	if got.Description != "example1" {
+		t.Errorf("error loaded Description does not match: %v", got)
 	}
 }
