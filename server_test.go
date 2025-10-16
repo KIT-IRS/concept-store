@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -58,6 +59,15 @@ func sendRequest(t *testing.T, method, UrlEnding string) *http.Response {
 	}
 	return resp
 }
+func getTestData() map[string]DataOutput {
+	return map[string]DataOutput{
+		"11": {
+			Unit:        "Volt",
+			Value:       "5",
+			Description: "example1",
+		},
+	}
+}
 
 // TestGetAnswerJSON_Success tests whether a valid json is put out
 // does not test data.json
@@ -67,13 +77,7 @@ func sendRequest(t *testing.T, method, UrlEnding string) *http.Response {
 // happy path
 func TestGetAnswerJSON_Success(t *testing.T) {
 	// Data struct for testing
-	Data = map[string]DataOutput{
-		"11": {
-			Unit:        "Volt",
-			Value:       "5",
-			Description: "example1",
-		},
-	}
+	Data = getTestData()
 
 	resp := sendRequest(t, http.MethodGet, "/answer?id=11")
 	defer resp.Body.Close()
@@ -108,6 +112,39 @@ func TestGetAnswerJSON_Success(t *testing.T) {
 		t.Errorf("Answer.Description=%q, expected %q", result.Answer.Description, "example1")
 	}
 
+}
+func TestGetAnswerXML_Success(t *testing.T) {
+	Data = getTestData()
+	resp := sendRequest(t, http.MethodGet, "/answer?id=11&format=xml")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Status %d, expected %d", resp.StatusCode, http.StatusOK)
+	}
+
+	ct := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(ct, "application/xml") {
+		t.Fatalf("Content-Type %q, expected application/xml", ct)
+	}
+
+	// check xml contents
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("error reading response body: %v", err)
+	}
+
+	xmlContent := string(bodyBytes)
+
+	if !strings.Contains(xmlContent, "<Unit>Volt</Unit>") {
+		t.Errorf("XML-Contents contain unexpected <Unit>: %s", xmlContent)
+	}
+	if !strings.Contains(xmlContent, "<Value>5</Value>") {
+		t.Errorf("XML-Contents contain unexpected <Value>: %s", xmlContent)
+	}
+	if !strings.Contains(xmlContent, "<Description>example1</Description>") {
+		t.Errorf("XML-Contents contain unexpected <Description>: %s", xmlContent)
+	}
 }
 
 // test error for missing ID
