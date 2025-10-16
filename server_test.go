@@ -46,6 +46,8 @@ func newTestServer() *httptest.Server {
 // does not test data.json
 
 // TODO: test that tests reading data file
+
+// happy path
 func TestGetAnswerJSON_Success(t *testing.T) {
 	// Data struct for testing
 	Data = map[string]DataOutput{
@@ -95,4 +97,57 @@ func TestGetAnswerJSON_Success(t *testing.T) {
 		t.Errorf("Answer.Description=%q, expected %q", result.Answer.Description, "example1")
 	}
 
+}
+
+// test error for missing ID
+func TestGetAnswer_MissingID(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/answer")
+	if err != nil {
+		t.Fatalf("error during GET /answer without id: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+
+}
+func TestGetAnswer_InvalidID(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/answer?id=333333")
+	if err != nil {
+		t.Fatalf("error during GET /answer with invalid id: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusNotFound)
+	}
+
+}
+func TestGetAnswer_WrongMethod(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/answer?id=11", nil)
+	if err != nil {
+		t.Fatalf("error during request: %v", err)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("error with POST /answer: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusMethodNotAllowed)
+	}
 }
