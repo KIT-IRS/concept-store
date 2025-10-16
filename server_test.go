@@ -41,6 +41,23 @@ func newTestServer() *httptest.Server {
 	mux.HandleFunc("/", getRoot)
 	return httptest.NewServer(mux)
 }
+func sendRequest(t *testing.T, method, UrlEnding string) *http.Response {
+	t.Helper()
+	ts := newTestServer()
+	defer ts.Close()
+
+	URL := ts.URL + UrlEnding
+	req, err := http.NewRequest(method, URL, nil)
+	if err != nil {
+		t.Fatalf("error during %v %v without id: %v", method, URL, err)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("error with %v %v %v", method, UrlEnding, err)
+	}
+	return resp
+}
 
 // TestGetAnswerJSON_Success tests whether a valid json is put out
 // does not test data.json
@@ -58,13 +75,7 @@ func TestGetAnswerJSON_Success(t *testing.T) {
 		},
 	}
 
-	ts := newTestServer()
-	defer ts.Close()
-	// issues GET to URL
-	resp, err := http.Get(ts.URL + "/answer?id=11")
-	if err != nil {
-		t.Fatalf("error during GET /answer: %v", err)
-	}
+	resp := sendRequest(t, http.MethodGet, "/answer?id=11")
 	defer resp.Body.Close()
 	// check status code
 	if resp.StatusCode != http.StatusOK {
@@ -101,14 +112,7 @@ func TestGetAnswerJSON_Success(t *testing.T) {
 
 // test error for missing ID
 func TestGetAnswer_MissingID(t *testing.T) {
-	ts := newTestServer()
-	defer ts.Close()
-
-	resp, err := http.Get(ts.URL + "/answer")
-	if err != nil {
-		t.Fatalf("error during GET /answer without id: %v", err)
-	}
-
+	resp := sendRequest(t, http.MethodGet, "/answer")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusBadRequest {
@@ -117,14 +121,7 @@ func TestGetAnswer_MissingID(t *testing.T) {
 
 }
 func TestGetAnswer_InvalidID(t *testing.T) {
-	ts := newTestServer()
-	defer ts.Close()
-
-	resp, err := http.Get(ts.URL + "/answer?id=333333")
-	if err != nil {
-		t.Fatalf("error during GET /answer with invalid id: %v", err)
-	}
-
+	resp := sendRequest(t, http.MethodGet, "/answer?id=3333")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNotFound {
@@ -133,18 +130,7 @@ func TestGetAnswer_InvalidID(t *testing.T) {
 
 }
 func TestGetAnswer_WrongMethod(t *testing.T) {
-	ts := newTestServer()
-	defer ts.Close()
-
-	req, err := http.NewRequest(http.MethodPost, ts.URL+"/answer?id=11", nil)
-	if err != nil {
-		t.Fatalf("error during request: %v", err)
-	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("error with POST /answer: %v", err)
-	}
+	resp := sendRequest(t, http.MethodPut, "/answer?id=11")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
