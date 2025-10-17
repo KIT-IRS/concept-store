@@ -117,7 +117,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 
 	go func() {
-		fmt.Printf("Server läuft unter http://localhost:%s\n", PORT)
+		fmt.Printf("server address: http://localhost:%s\n", PORT)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("Server error: %s\n", err)
 		}

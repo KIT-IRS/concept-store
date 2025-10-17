@@ -23,10 +23,10 @@ func TestGetHealth(t *testing.T) {
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
-		res := response.Result() // echtes *http.Response Objekt
+		res := response.Result()
 		defer res.Body.Close()
 
-		// prüfe status code
+		// test status code
 		if res.StatusCode != http.StatusOK {
 			t.Errorf("Statuscode: got %d, want %d", res.StatusCode, http.StatusOK)
 		}
