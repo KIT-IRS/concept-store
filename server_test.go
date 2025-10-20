@@ -10,31 +10,6 @@ import (
 	"testing"
 )
 
-func TestGetHealth(t *testing.T) {
-	t.Run("returns 200 and OK", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/health", nil)
-		response := httptest.NewRecorder()
-
-		getHealth(response, request)
-
-		got := response.Body.String()
-		want := "OK"
-
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-		res := response.Result()
-		defer res.Body.Close()
-
-		// test status code
-		if res.StatusCode != http.StatusOK {
-			t.Errorf("Statuscode: got %d, want %d", res.StatusCode, http.StatusOK)
-		}
-
-	})
-
-}
-
 // make a test http server
 func newTestServer() *httptest.Server {
 	mux := http.NewServeMux()
@@ -70,13 +45,30 @@ func getTestData() map[string]DataOutput {
 		},
 	}
 }
+func TestGetHealth(t *testing.T) {
+	t.Run("returns 200 and OK", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodGet, "/health", nil)
+		response := httptest.NewRecorder()
 
-// TestGetAnswerJSON_Success tests whether a valid json is put out
-// does not test data.json
+		getHealth(response, request)
 
-// happy path
+		got := response.Body.String()
+		want := "OK"
 
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+		res := response.Result()
+		defer res.Body.Close()
 
+		// test status code
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Statuscode: got %d, want %d", res.StatusCode, http.StatusOK)
+		}
+
+	})
+
+}
 func TestLoadData(t *testing.T) {
 	testData := getTestData()
 
