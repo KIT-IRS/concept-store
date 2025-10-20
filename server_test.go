@@ -39,7 +39,8 @@ func TestGetHealth(t *testing.T) {
 func newTestServer() *httptest.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", getHealth)
-	mux.HandleFunc("/answer", getAnswer)
+	mux.HandleFunc("/json", getJson)
+	mux.HandleFunc("/xml", getXml)
 	mux.HandleFunc("/", getRoot)
 	return httptest.NewServer(mux)
 }
@@ -74,11 +75,11 @@ func getTestData() map[string]DataOutput {
 // does not test data.json
 
 // happy path
-func TestGetAnswerJSON_Success(t *testing.T) {
+func TestGetJSON_Success(t *testing.T) {
 	// Data struct for testing
 	Data = getTestData()
 
-	resp := sendRequest(t, http.MethodGet, "/answer?id=11")
+	resp := sendRequest(t, http.MethodGet, "/json?id=11")
 	defer resp.Body.Close()
 	// check status code
 	if resp.StatusCode != http.StatusOK {
@@ -112,9 +113,9 @@ func TestGetAnswerJSON_Success(t *testing.T) {
 	}
 
 }
-func TestGetAnswerXML_Success(t *testing.T) {
+func TestGetXML_Success(t *testing.T) {
 	Data = getTestData()
-	resp := sendRequest(t, http.MethodGet, "/answer?id=11&format=xml")
+	resp := sendRequest(t, http.MethodGet, "/xml?id=11")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -147,8 +148,8 @@ func TestGetAnswerXML_Success(t *testing.T) {
 }
 
 // test error for missing ID
-func TestGetAnswer_MissingID(t *testing.T) {
-	resp := sendRequest(t, http.MethodGet, "/answer")
+func TestGetJson_MissingID(t *testing.T) {
+	resp := sendRequest(t, http.MethodGet, "/json")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusBadRequest {
@@ -156,8 +157,17 @@ func TestGetAnswer_MissingID(t *testing.T) {
 	}
 
 }
-func TestGetAnswer_InvalidID(t *testing.T) {
-	resp := sendRequest(t, http.MethodGet, "/answer?id=3333")
+func TestGetXml_MissingID(t *testing.T) {
+	resp := sendRequest(t, http.MethodGet, "/xml")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+
+}
+func TestGetJson_InvalidID(t *testing.T) {
+	resp := sendRequest(t, http.MethodGet, "/json?id=3333")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNotFound {
@@ -165,8 +175,25 @@ func TestGetAnswer_InvalidID(t *testing.T) {
 	}
 
 }
-func TestGetAnswer_WrongMethod(t *testing.T) {
-	resp := sendRequest(t, http.MethodPut, "/answer?id=11")
+func TestGetXml_InvalidID(t *testing.T) {
+	resp := sendRequest(t, http.MethodGet, "/xml?id=3333")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusNotFound)
+	}
+
+}
+func TestGetJson_WrongMethod(t *testing.T) {
+	resp := sendRequest(t, http.MethodPut, "/json?id=11")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusMethodNotAllowed)
+	}
+}
+func TestGetXml_WrongMethod(t *testing.T) {
+	resp := sendRequest(t, http.MethodPut, "/xml?id=11")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
