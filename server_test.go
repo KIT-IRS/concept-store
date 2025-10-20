@@ -75,131 +75,7 @@ func getTestData() map[string]DataOutput {
 // does not test data.json
 
 // happy path
-func TestGetJSON_Success(t *testing.T) {
-	// Data struct for testing
-	Data = getTestData()
 
-	resp := sendRequest(t, http.MethodGet, "/json?id=11")
-	defer resp.Body.Close()
-	// check status code
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Status %d, expected %d", resp.StatusCode, http.StatusOK)
-	}
-	// get header, check if json format
-	ct := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(ct, "application/json") {
-		t.Fatalf("Content-Type %q, expected application/json", ct)
-	}
-
-	var result struct {
-		ID     string     `json:"id"`
-		Answer DataOutput `json:"answer"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		t.Fatalf("error decoding JSON: %v", err)
-	}
-
-	if result.ID != "11" {
-		t.Errorf("ID=%q, expected %q", result.ID, "11")
-	}
-	if result.Answer.Unit != "Volt" {
-		t.Errorf("Answer.Unit=%q, expected %q", result.Answer.Unit, "Volt")
-	}
-	if result.Answer.Value != "5" {
-		t.Errorf("Answer.Value=%q, expected %q", result.Answer.Value, "5")
-	}
-	if result.Answer.Description != "example1" {
-		t.Errorf("Answer.Description=%q, expected %q", result.Answer.Description, "example1")
-	}
-
-}
-func TestGetXML_Success(t *testing.T) {
-	Data = getTestData()
-	resp := sendRequest(t, http.MethodGet, "/xml?id=11")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Status %d, expected %d", resp.StatusCode, http.StatusOK)
-	}
-
-	ct := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(ct, "application/xml") {
-		t.Fatalf("Content-Type %q, expected application/xml", ct)
-	}
-
-	// check xml contents
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("error reading response body: %v", err)
-	}
-
-	xmlContent := string(bodyBytes)
-
-	if !strings.Contains(xmlContent, "<Unit>Volt</Unit>") {
-		t.Errorf("XML-Contents contain unexpected <Unit>: %s", xmlContent)
-	}
-	if !strings.Contains(xmlContent, "<Value>5</Value>") {
-		t.Errorf("XML-Contents contain unexpected <Value>: %s", xmlContent)
-	}
-	if !strings.Contains(xmlContent, "<Description>example1</Description>") {
-		t.Errorf("XML-Contents contain unexpected <Description>: %s", xmlContent)
-	}
-}
-
-// test error for missing ID
-func TestGetJson_MissingID(t *testing.T) {
-	resp := sendRequest(t, http.MethodGet, "/json")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-
-}
-func TestGetXml_MissingID(t *testing.T) {
-	resp := sendRequest(t, http.MethodGet, "/xml")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-
-}
-func TestGetJson_InvalidID(t *testing.T) {
-	resp := sendRequest(t, http.MethodGet, "/json?id=3333")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusNotFound)
-	}
-
-}
-func TestGetXml_InvalidID(t *testing.T) {
-	resp := sendRequest(t, http.MethodGet, "/xml?id=3333")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusNotFound)
-	}
-
-}
-func TestGetJson_WrongMethod(t *testing.T) {
-	resp := sendRequest(t, http.MethodPut, "/json?id=11")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusMethodNotAllowed {
-		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusMethodNotAllowed)
-	}
-}
-func TestGetXml_WrongMethod(t *testing.T) {
-	resp := sendRequest(t, http.MethodPut, "/xml?id=11")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusMethodNotAllowed {
-		t.Errorf("Statuscode: got %d, want %d", resp.StatusCode, http.StatusMethodNotAllowed)
-	}
-}
 
 func TestLoadData(t *testing.T) {
 	testData := getTestData()
@@ -238,4 +114,118 @@ func TestLoadData(t *testing.T) {
 	if got.Description != "example1" {
 		t.Errorf("error loaded Description does not match: %v", got)
 	}
+}
+
+func TestGetJson(t *testing.T) {
+	Data = getTestData()
+
+	t.Run("Success", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodGet, "/json?id=11")
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Status %d, expected %d", resp.StatusCode, http.StatusOK)
+		}
+		if !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+			t.Fatalf("Wrong Content-Type")
+		}
+
+		var result struct {
+			ID     string     `json:"id"`
+			Answer DataOutput `json:"answer"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("error decoding JSON: %v", err)
+		}
+
+		if result.ID != "11" {
+			t.Errorf("ID=%q, expected %q", result.ID, "11")
+		}
+		if result.Answer.Unit != "Volt" {
+			t.Errorf("Answer.Unit=%q, expected %q", result.Answer.Unit, "Volt")
+		}
+		if result.Answer.Value != "5" {
+			t.Errorf("Answer.Value=%q, expected %q", result.Answer.Value, "5")
+		}
+		if result.Answer.Description != "example1" {
+			t.Errorf("Answer.Description=%q, expected %q", result.Answer.Description, "example1")
+		}
+
+	})
+
+	t.Run("MissingID", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodGet, "/json")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("Expected 400, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("InvalidID", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodGet, "/json?id=999")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected 404, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("WrongMethod", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodPut, "/json?id=11")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("Expected 405, got %d", resp.StatusCode)
+		}
+	})
+}
+
+func TestGetXml(t *testing.T) {
+	Data = getTestData()
+
+	t.Run("Success", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodGet, "/xml?id=11")
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Status %d, expected %d", resp.StatusCode, http.StatusOK)
+		}
+		if !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/xml") {
+			t.Fatalf("Wrong Content-Type")
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		xmlContent := string(bodyBytes)
+		if !strings.Contains(xmlContent, "<Unit>Volt</Unit>") {
+			t.Errorf("XML-Contents contain unexpected <Unit>: %s", xmlContent)
+		}
+		if !strings.Contains(xmlContent, "<Value>5</Value>") {
+			t.Errorf("XML-Contents contain unexpected <Value>: %s", xmlContent)
+		}
+		if !strings.Contains(xmlContent, "<Description>example1</Description>") {
+			t.Errorf("XML-Contents contain unexpected <Description>: %s", xmlContent)
+		}
+	})
+
+	t.Run("MissingID", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodGet, "/xml")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("Expected 400, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("InvalidID", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodGet, "/xml?id=999")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected 404, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("WrongMethod", func(t *testing.T) {
+		resp := sendRequest(t, http.MethodPut, "/xml?id=11")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("Expected 405, got %d", resp.StatusCode)
+		}
+	})
 }
