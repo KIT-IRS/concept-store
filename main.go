@@ -48,13 +48,38 @@ func LoadData(filename string) error {
 	return nil
 }
 
-func getAnswer(w http.ResponseWriter, r *http.Request) {
+func getJson(w http.ResponseWriter, r *http.Request) {
+	id, val := getAnswer(w, r)
+	type resp struct {
+		ID     string     `json:"id"`
+		Answer DataOutput `json:"answer"`
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp{ID: id, Answer: val})
+}
+
+func getXml(w http.ResponseWriter, r *http.Request) {
+	id, val := getAnswer(w, r)
+	type AnswerXML struct {
+		XMLName    xml.Name `xml:"answer"`
+		ID         string   `xml:"id"`
+		DataOutput `xml:",inline"`
+	}
+
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusOK)
+	_ = xml.NewEncoder(w).Encode(AnswerXML{ID: id, DataOutput: val})
+}
+
+func getAnswer(w http.ResponseWriter, r *http.Request) (id string, val DataOutput) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	id := r.URL.Query().Get("id")
+	id = r.URL.Query().Get("id")
 	if id == "" {
 		http.Error(w, "missing query param: id", http.StatusBadRequest)
 		return
@@ -65,30 +90,7 @@ func getAnswer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-
-	format := r.URL.Query().Get("format")
-	switch format {
-	case "xml":
-		type AnswerXML struct {
-			XMLName    xml.Name `xml:"answer"`
-			ID         string   `xml:"id"`
-			DataOutput `xml:",inline"`
-		}
-
-		w.Header().Set("Content-Type", "application/xml")
-		w.WriteHeader(http.StatusOK)
-		_ = xml.NewEncoder(w).Encode(AnswerXML{ID: id, DataOutput: val})
-
-	default: // JSON
-		type resp struct {
-			ID     string     `json:"id"`
-			Answer DataOutput `json:"answer"`
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(resp{ID: id, Answer: val})
-	}
+	return id, val
 }
 
 func main() {
@@ -99,7 +101,8 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", getHealth)
-	mux.HandleFunc("/answer", getAnswer)
+	mux.HandleFunc("/json", getJson)
+	mux.HandleFunc("/xml", getXml)
 	mux.HandleFunc("/", getRoot)
 
 	server := &http.Server{
