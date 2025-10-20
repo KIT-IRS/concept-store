@@ -49,7 +49,12 @@ func LoadData(filename string) error {
 }
 
 func getJson(w http.ResponseWriter, r *http.Request) {
-	id, val := getAnswer(w, r)
+	id, val, errCode, err := getAnswer(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), errCode)
+		return
+	}
 	type resp struct {
 		ID     string     `json:"id"`
 		Answer DataOutput `json:"answer"`
@@ -61,7 +66,13 @@ func getJson(w http.ResponseWriter, r *http.Request) {
 }
 
 func getXml(w http.ResponseWriter, r *http.Request) {
-	id, val := getAnswer(w, r)
+	id, val, errCode, err := getAnswer(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), errCode)
+		return
+	}
+
 	type AnswerXML struct {
 		XMLName    xml.Name `xml:"answer"`
 		ID         string   `xml:"id"`
@@ -73,24 +84,21 @@ func getXml(w http.ResponseWriter, r *http.Request) {
 	_ = xml.NewEncoder(w).Encode(AnswerXML{ID: id, DataOutput: val})
 }
 
-func getAnswer(w http.ResponseWriter, r *http.Request) (id string, val DataOutput) {
+func getAnswer(r *http.Request) (string, DataOutput, int, error) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
+		return "", DataOutput{}, http.StatusMethodNotAllowed, fmt.Errorf("method not allowed")
 	}
 
-	id = r.URL.Query().Get("id")
+	id := r.URL.Query().Get("id")
 	if id == "" {
-		http.Error(w, "missing query param: id", http.StatusBadRequest)
-		return
+		return "", DataOutput{}, http.StatusBadRequest, fmt.Errorf("missing query param: id")
 	}
 
 	val, ok := Data[id]
 	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
+		return "", DataOutput{}, http.StatusNotFound, fmt.Errorf("not found")
 	}
-	return id, val
+	return id, val, http.StatusOK, nil
 }
 
 func main() {
