@@ -1,14 +1,19 @@
-FROM golang:1.25.3
+# Stage 1: Build
+FROM golang:1.25.3 AS builder
 
-WORKDIR /usr/src/app
-
+WORKDIR /app
 COPY go.mod ./
 RUN go mod download
-
 COPY . .
+RUN go build -v -o concept-store
 
-RUN go build -v -o /usr/local/bin/app
+# Stage 2: Run
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /app
+COPY --from=builder /app/concept-store .
 
 EXPOSE 3737
-
-CMD ["app"]
+CMD ["./concept-store"]
