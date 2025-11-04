@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Concept Store Query</title>
+</head>
+
+<body>
+    <h1>Concept Store Query</h1>
+    <form id="queryForm" target="_blank">
+        <label for="id">Enter ID:</label><br>
+        <input type="text" id="id" name="id" required><br><br>
+
+        <label for="format">choose format:</label><br>
+        <select id="format" name="format">
+            <option value="json">JSON</option>
+            <option value="xml">XML</option>
+        </select><br><br>
+
+        <button type="submit">submit</button>
+    </form>
+
+    <script>
+        document.getElementById("queryForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const id = encodeURIComponent(document.getElementById("id").value);
+            const format = document.getElementById("format").value;
+            const url = `http://localhost:3737/${format}?id=${id}`;
+            window.open(url, "_blank");
+        });
+    </script>
+</body>
+
+</html>

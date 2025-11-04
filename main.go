@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 )
 
@@ -50,7 +51,6 @@ type ConceptDescription struct {
 	IDShort                    string                      `json:"idShort" xml:"idShort"`
 }
 
-// Globale Datenmap
 var Data = map[string]ConceptDescription{}
 
 func LoadData(filename string) error {
@@ -88,8 +88,7 @@ func getHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "concept store")
+	http.ServeFile(w, r, "main_page.html")
 }
 
 func getAnswer(r *http.Request) (string, ConceptDescription, int, error) {
@@ -110,19 +109,32 @@ func getAnswer(r *http.Request) (string, ConceptDescription, int, error) {
 	return id, val, http.StatusOK, nil
 }
 
+func getJsonByPath(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/concept-store/")
+
+	fullID := "http://localhost:3737/concept-store/" + id
+
+	val, ok := Data[fullID]
+	if !ok {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(val)
+}
+
 func getJson(w http.ResponseWriter, r *http.Request) {
-	id, val, errCode, err := getAnswer(r)
+	_, val, errCode, err := getAnswer(r)
 	if err != nil {
 		http.Error(w, err.Error(), errCode)
 		return
 	}
-	type resp struct {
-		ID     string             `json:"id"`
-		Answer ConceptDescription `json:"answer"`
-	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp{ID: id, Answer: val})
+	_ = json.NewEncoder(w).Encode(val)
 }
 
 func getXml(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +165,7 @@ func main() {
 	mux.HandleFunc("/json", getJson)
 	mux.HandleFunc("/xml", getXml)
 	mux.HandleFunc("/", getRoot)
+	mux.HandleFunc("/concept-store/", getJsonByPath)
 
 	server := &http.Server{
 		Addr:           ":" + PORT,

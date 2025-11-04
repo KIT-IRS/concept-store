@@ -41,7 +41,7 @@
           }
         }
       ],
-      "id": "nummer3",
+      "id": "0173-1#02-AAZ842#002",
       "idShort": "Temperature"
     },
     {
@@ -86,7 +86,7 @@
           }
         }
       ],
-      "id": "nummer2",
+      "id": "0173-1#02-ABC147#002",
       "idShort": "Humidity"
     },
     {
@@ -131,7 +131,7 @@
           }
         }
       ],
-      "id": "nummer1",
+      "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration",
       "idShort": "AirQuality"
     }
   ]
