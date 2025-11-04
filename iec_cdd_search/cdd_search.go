@@ -180,7 +180,7 @@ func nextElementSibling(n *html.Node, tag string) *html.Node {
 	return nil
 }
 
-// ---------- strict mapping to AAS ConceptDescription ----------
+// ---------- AAS ConceptDescription ----------
 
 type LangString struct {
 	Language string `json:"language"`
@@ -193,10 +193,10 @@ type ValueReferencePair struct {
 }
 
 type DataSpecificationIec61360 struct {
-	ModelType     string               `json:"modelType"`          // "DataSpecificationIec61360"
-	DataType      string               `json:"dataType,omitempty"` // IEC61360 data type (strict)
-	Definition    []LangString         `json:"definition"`         // required: at least EN
-	PreferredName []LangString         `json:"preferredName"`      // required: at least EN
+	ModelType     string               `json:"modelType"`
+	DataType      string               `json:"dataType,omitempty"`
+	Definition    []LangString         `json:"definition"`
+	PreferredName []LangString         `json:"preferredName"`
 	Unit          string               `json:"unit,omitempty"`
 	UnitId        string               `json:"unitId,omitempty"`
 	Symbol        string               `json:"symbol,omitempty"`
@@ -207,13 +207,13 @@ type DataSpecificationIec61360 struct {
 }
 
 type Key struct {
-	Type  string `json:"type"`  // "GlobalReference"
-	Value string `json:"value"` // URL
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
 
 type Reference struct {
 	Keys []Key  `json:"keys"`
-	Type string `json:"type"` // "ExternalReference"
+	Type string `json:"type"`
 }
 
 type EmbeddedDataSpecification struct {
@@ -222,11 +222,85 @@ type EmbeddedDataSpecification struct {
 }
 
 type ConceptDescription struct {
-	ModelType                  string                      `json:"modelType"` // "ConceptDescription"
+	ModelType                  string                      `json:"modelType"`
 	EmbeddedDataSpecifications []EmbeddedDataSpecification `json:"embeddedDataSpecifications"`
-	Id                         string                      `json:"id"`      // IRDI input
-	IdShort                    string                      `json:"idShort"` // deterministic: EN preferredName
+	Id                         string                      `json:"id"`
+	IdShort                    string                      `json:"idShort"`
 }
+
+// ---------- data.json structure (paging_metadata + result) ----------
+
+type DataFile struct {
+	PagingMetadata map[string]any       `json:"paging_metadata"`
+	Result         []ConceptDescription `json:"result"`
+}
+
+// readDataFile returns an initialized DataFile (empty skeleton if file missing/empty)
+func readDataFile(filename string) (DataFile, error) {
+	df := DataFile{PagingMetadata: map[string]any{}, Result: []ConceptDescription{}}
+
+	b, err := os.ReadFile(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return df, nil
+		}
+		return df, fmt.Errorf("failed to read %s: %w", filename, err)
+	}
+	trimmed := strings.TrimSpace(string(b))
+	if trimmed == "" {
+		return df, nil
+	}
+	if err := json.Unmarshal([]byte(trimmed), &df); err != nil {
+		return df, fmt.Errorf("failed to parse %s: %w", filename, err)
+	}
+	// ensure non-nil fields
+	if df.PagingMetadata == nil {
+		df.PagingMetadata = map[string]any{}
+	}
+	if df.Result == nil {
+		df.Result = []ConceptDescription{}
+	}
+	return df, nil
+}
+
+func writeDataFileAtomic(filename string, df DataFile) error {
+	out, err := json.MarshalIndent(df, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := filename + ".tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return fmt.Errorf("failed to write temp file %s: %w", tmp, err)
+	}
+	if err := os.Rename(tmp, filename); err != nil {
+		return fmt.Errorf("failed to replace %s: %w", filename, err)
+	}
+	return nil
+}
+
+func idExistsInDataFile(id, filename string) (bool, error) {
+	df, err := readDataFile(filename)
+	if err != nil {
+		return false, err
+	}
+	for _, item := range df.Result {
+		if item.Id == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func appendConceptDescriptionToDataFile(cd ConceptDescription, filename string) error {
+	df, err := readDataFile(filename)
+	if err != nil {
+		return err
+	}
+	df.Result = append(df.Result, cd)
+	return writeDataFileAtomic(filename, df)
+}
+
+// ---------- strict mapping ----------
 
 func buildConceptDescriptionStrict(fields map[string]string, irdi string) (ConceptDescription, error) {
 	labelMap := map[string][]string{
@@ -251,7 +325,6 @@ func buildConceptDescriptionStrict(fields map[string]string, irdi string) (Conce
 		return ""
 	}
 
-	// required EN fields
 	pref := get(labelMap["preferredName"])
 	if pref == "" {
 		var have []string
@@ -265,7 +338,6 @@ func buildConceptDescriptionStrict(fields map[string]string, irdi string) (Conce
 		return ConceptDescription{}, fmt.Errorf("missing required field: definition")
 	}
 
-	// strict IEC61360 dataType (optional)
 	dtRaw := strings.TrimSpace(get(labelMap["dataType"]))
 	dt, err := mapDataTypeStrict(dtRaw)
 	if err != nil {
@@ -371,67 +443,6 @@ func splitValueAndIRDI(s string) (val, id string) {
 	return strings.TrimSpace(s), ""
 }
 
-// ---------- JSON handling (robust, handles empty file, atomic write) ----------
-
-func idExistsInFile(id, filename string) (bool, error) {
-	b, err := os.ReadFile(filename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	trimmed := strings.TrimSpace(string(b))
-	if trimmed == "" { // empty file → treat as empty list
-		return false, nil
-	}
-
-	var list []ConceptDescription
-	if err := json.Unmarshal([]byte(trimmed), &list); err != nil {
-		return false, fmt.Errorf("failed to parse %s: %w", filename, err)
-	}
-	for _, item := range list {
-		if item.Id == id {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func appendConceptDescription(cd ConceptDescription, filename string) error {
-	var list []ConceptDescription
-
-	// read existing contents if any
-	if b, err := os.ReadFile(filename); err == nil {
-		trimmed := strings.TrimSpace(string(b))
-		if trimmed != "" {
-			if err := json.Unmarshal([]byte(trimmed), &list); err != nil {
-				return fmt.Errorf("failed to parse %s: %w", filename, err)
-			}
-		}
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("failed to read %s: %w", filename, err)
-	}
-
-	list = append(list, cd)
-
-	out, err := json.MarshalIndent(list, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	// atomic write: write to temp file, then rename
-	tmp := filename + ".tmp"
-	if err := os.WriteFile(tmp, out, 0o644); err != nil {
-		return fmt.Errorf("failed to write temp file %s: %w", tmp, err)
-	}
-	if err := os.Rename(tmp, filename); err != nil {
-		return fmt.Errorf("failed to replace %s: %w", filename, err)
-	}
-	return nil
-}
-
 // ---------- main ----------
 
 func main() {
@@ -440,8 +451,8 @@ func main() {
 	userInput, _ := reader.ReadString('\n')
 	userInput = strings.TrimSpace(userInput)
 
-	// Early exit if ID already exists in data.json
-	exists, err := idExistsInFile(userInput, dataFilename)
+	// Early exit if ID already exists in data.json (within result array)
+	exists, err := idExistsInDataFile(userInput, dataFilename)
 	if err != nil {
 		fmt.Printf(" Error reading %s: %v\n", dataFilename, err)
 		os.Exit(1)
@@ -479,8 +490,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := appendConceptDescription(cd, dataFilename); err != nil {
-		fmt.Printf(" Error writing %s: %v\n", dataFilename, err)
+	if err := appendConceptDescriptionToDataFile(cd, dataFilename); err != nil {
+		fmt.Printf(" Error updating %s: %v\n", dataFilename, err)
 		os.Exit(1)
 	}
 
