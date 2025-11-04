@@ -1,0 +1,34 @@
+{
+    "modelType": "ConceptDescription",
+    "embeddedDataSpecifications": [
+        {
+            "dataSpecification": {
+                "keys": [
+                    {
+                        "type": "GlobalReference",
+                        "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+                    }
+                ],
+                "type": "ExternalReference"
+            },
+            "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "definition": [
+                    {
+                        "language": "en",
+                        "text": "switch which, in the open position, satisfies the isolating requirements specified for a disconnector"
+                    }
+                ],
+                "preferredName": [
+                    {
+                        "language": "en",
+                        "text": "Switch-disconnector"
+                    }
+                ],
+                "sourceOfDefinition": "IEC 60050-441: 1984, 441-14-12"
+            }
+        }
+    ],
+    "id": "0112/2///62683#ACC301#001",
+    "idShort": "Switch-disconnector"
+}

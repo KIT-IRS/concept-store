@@ -2,9 +2,8 @@ package main
 
 import (
 	"bufio"
-	"encoding/xml"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -14,12 +13,14 @@ import (
 )
 
 const baseURL = "https://cdd.iec.ch/cdd/"
-const dsNS = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIec61360/3/0"
+const dataSpecURL = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+
+// ---------- input / URL helpers ----------
 
 func cleanInput(irdi string) (string, error) {
 	irdi = strings.TrimSpace(irdi)
 	if len(irdi) < 4 {
-		return "", fmt.Errorf("Eingabe ist zu kurz, um die letzten 4 Zeichen zu entfernen")
+		return "", fmt.Errorf("input too short to remove the last 4 characters")
 	}
 	trimmed := strings.TrimSpace(irdi[:len(irdi)-4])
 	trimmed = strings.ReplaceAll(trimmed, "/", "-")
@@ -51,50 +52,38 @@ func buildURL(number, cleaned string) string {
 	return fmt.Sprintf("%s%s/%s.nsf/TU0/%s", baseURL, prefix, prefix, cleaned)
 }
 
-// ---- HTTP + HTML speichern & Node zurückgeben ----
-func fetchEnglishSection(url, filename string) (*html.Node, bool) {
+// ---------- HTTP + HTML (no saving) ----------
+
+func fetchEnglishSection(url string) (*html.Node, bool) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Printf(" Fehler beim Erstellen der Anfrage: %v\n", err)
+		fmt.Printf(" Error creating request: %v\n", err)
 		return nil, false
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf(" Fehler beim Abrufen der URL: %v\n", err)
+		fmt.Printf(" Error fetching URL: %v\n", err)
 		return nil, false
 	}
 	defer resp.Body.Close()
 
-	fmt.Printf(" Statuscode: %d\n", resp.StatusCode)
+	fmt.Printf(" HTTP status code: %d\n", resp.StatusCode)
 
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
-		fmt.Printf(" Fehler beim Parsen des HTML: %v\n", err)
+		fmt.Printf(" Error parsing HTML: %v\n", err)
 		return nil, false
 	}
 
-	target := findElementByID(doc, "onglet1")
+	target := findElementByID(doc, "onglet1") // English tab
 	if target == nil {
-		fmt.Println(" Kein englischer Abschnitt gefunden.")
+		fmt.Println(" No English section found.")
 		return nil, false
 	}
 
-	f, err := os.Create(filename)
-	if err != nil {
-		fmt.Printf(" Fehler beim Speichern der Datei: %v\n", err)
-		return nil, false
-	}
-	defer f.Close()
-
-	if err := renderNode(f, target); err != nil {
-		fmt.Printf(" Fehler beim Schreiben der Datei: %v\n", err)
-		return nil, false
-	}
-
-	fmt.Printf(" Gespeichert in: %s\n", filename)
 	return target, true
 }
 
@@ -118,99 +107,50 @@ func findElementByID(n *html.Node, id string) *html.Node {
 	return dfs(n)
 }
 
-func renderNode(w io.Writer, n *html.Node) error {
-	_, _ = io.WriteString(w, "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body>")
-	if err := html.Render(w, n); err != nil {
-		return err
-	}
-	_, _ = io.WriteString(w, "</body></html>")
-	return nil
+// ---------- field extraction ----------
+
+func normalizeSpaces(s string) string {
+	s = strings.TrimSpace(s)
+	fields := strings.Fields(strings.ReplaceAll(s, "\u00A0", " "))
+	return strings.Join(fields, " ")
 }
 
-// ---------- IEC 61360 (AAS) XML ----------
-
-type LangString struct {
-	Language string `xml:"lang,attr,omitempty"` // xml:lang wäre sauberer mit Namespace, hier schlicht "lang"
-	Text     string `xml:",chardata"`
+func normalizeKey(s string) string {
+	s = normalizeSpaces(s)
+	s = strings.TrimSuffix(s, ":") // strip trailing colon used by CDD labels
+	return strings.ToLower(s)
 }
 
-type ValueReferencePair struct {
-	Value   string `xml:"value"`
-	ValueId string `xml:"valueId,omitempty"`
-}
-
-type DataSpecificationIec61360 struct {
-	XMLName       xml.Name             `xml:"DataSpecificationIec61360"`
-	XMLNS         string               `xml:"xmlns,attr"`
-	PreferredName LangString           `xml:"preferredName"`
-	ShortName     *LangString          `xml:"shortName,omitempty"`
-	Definition    LangString           `xml:"definition"`
-	DataType      string               `xml:"dataType,omitempty"`
-	ValueFormat   string               `xml:"valueFormat,omitempty"`
-	Unit          string               `xml:"unit,omitempty"`
-	UnitId        string               `xml:"unitId,omitempty"`
-	Symbol        string               `xml:"symbol,omitempty"`
-	ValueList     []ValueReferencePair `xml:"valueList>valueReferencePair,omitempty"`
-	LevelType     string               `xml:"levelType,omitempty"`
-	SourceOfDef   string               `xml:"sourceOfDefinition,omitempty"`
-}
-
-// Heuristik: extrahiere Label→Wert-Paare aus Tabellen, DLs und "Label: Wert"-Zeilen
 func extractFields(n *html.Node) map[string]string {
 	fields := map[string]string{}
 
-	normalize := func(s string) string {
-		s = strings.TrimSpace(s)
-		s = strings.Join(strings.Fields(s), " ")
-		return s
-	}
-
-	// Sammle alle Textblätter (für einfache "Label: Wert"-Muster)
-	var texts []string
 	var walk func(*html.Node)
 	walk = func(x *html.Node) {
-		if x.Type == html.TextNode {
-			t := normalize(x.Data)
-			if t != "" {
-				texts = append(texts, t)
-			}
-		}
-		// Tabelle TR->(TH/TD)
+		// tables: TR with TH/TD
 		if x.Type == html.ElementNode && strings.EqualFold(x.Data, "tr") {
 			var cells []string
 			for c := x.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.ElementNode && (strings.EqualFold(c.Data, "td") || strings.EqualFold(c.Data, "th")) {
-					cells = append(cells, normalize(innerText(c)))
+					cells = append(cells, normalizeSpaces(innerText(c)))
 				}
 			}
 			if len(cells) >= 2 {
-				key := strings.ToLower(cells[0])
+				key := normalizeKey(cells[0])
 				fields[key] = cells[1]
 			}
 		}
-		// DL -> DT/DD
+		// definition lists: DT → DD
 		if x.Type == html.ElementNode && strings.EqualFold(x.Data, "dt") {
-			key := strings.ToLower(normalize(innerText(x)))
+			key := normalizeKey(innerText(x))
 			if dd := nextElementSibling(x, "dd"); dd != nil {
-				fields[key] = normalize(innerText(dd))
+				fields[key] = normalizeSpaces(innerText(dd))
 			}
 		}
-
 		for c := x.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)
 		}
 	}
 	walk(n)
-
-	// Fallback: „Label: Wert“-Paare in linearer Reihenfolge
-	for i := 0; i < len(texts)-1; i++ {
-		if strings.HasSuffix(texts[i], ":") && !strings.Contains(texts[i+1], ":") {
-			key := strings.ToLower(strings.TrimSuffix(texts[i], ":"))
-			if _, exists := fields[key]; !exists {
-				fields[key] = texts[i+1]
-			}
-		}
-	}
 
 	return fields
 }
@@ -227,7 +167,7 @@ func innerText(n *html.Node) string {
 		}
 	}
 	rec(n)
-	return strings.Join(strings.Fields(b.String()), " ")
+	return normalizeSpaces(b.String())
 }
 
 func nextElementSibling(n *html.Node, tag string) *html.Node {
@@ -239,11 +179,57 @@ func nextElementSibling(n *html.Node, tag string) *html.Node {
 	return nil
 }
 
-// Mapping CDD-Labels → IEC61360 Felder
-func buildIEC61360(fields map[string]string, irdi string) DataSpecificationIec61360 {
-	// Mögliche Labelvarianten (je nach Seite)
+// ---------- strict mapping to AAS ConceptDescription ----------
+
+type LangString struct {
+	Language string `json:"language"`
+	Text     string `json:"text"`
+}
+
+type ValueReferencePair struct {
+	Value   string `json:"value"`
+	ValueId string `json:"valueId,omitempty"`
+}
+
+type DataSpecificationIec61360 struct {
+	ModelType     string               `json:"modelType"`          // "DataSpecificationIec61360"
+	DataType      string               `json:"dataType,omitempty"` // IEC61360 data type (strict)
+	Definition    []LangString         `json:"definition"`         // required: at least EN
+	PreferredName []LangString         `json:"preferredName"`      // required: at least EN
+	Unit          string               `json:"unit,omitempty"`
+	UnitId        string               `json:"unitId,omitempty"`
+	Symbol        string               `json:"symbol,omitempty"`
+	ValueList     []ValueReferencePair `json:"valueList,omitempty"`
+	LevelType     string               `json:"levelType,omitempty"`
+	SourceOfDef   string               `json:"sourceOfDefinition,omitempty"`
+	ValueFormat   string               `json:"valueFormat,omitempty"`
+}
+
+type Key struct {
+	Type  string `json:"type"`  // "GlobalReference"
+	Value string `json:"value"` // URL
+}
+
+type Reference struct {
+	Keys []Key  `json:"keys"`
+	Type string `json:"type"` // "ExternalReference"
+}
+
+type EmbeddedDataSpecification struct {
+	DataSpecification        Reference                 `json:"dataSpecification"`
+	DataSpecificationContent DataSpecificationIec61360 `json:"dataSpecificationContent"`
+}
+
+type ConceptDescription struct {
+	ModelType                  string                      `json:"modelType"` // "ConceptDescription"
+	EmbeddedDataSpecifications []EmbeddedDataSpecification `json:"embeddedDataSpecifications"`
+	Id                         string                      `json:"id"`      // IRDI input
+	IdShort                    string                      `json:"idShort"` // deterministic: EN preferredName
+}
+
+func buildConceptDescriptionStrict(fields map[string]string, irdi string) (ConceptDescription, error) {
 	labelMap := map[string][]string{
-		"preferredName": {"preferred name", "name", "english name"},
+		"preferredName": {"preferred name", "english name", "preferred name (en)"},
 		"shortName":     {"short name"},
 		"definition":    {"definition"},
 		"unit":          {"unit", "unit (symbol)", "uom"},
@@ -252,7 +238,7 @@ func buildIEC61360(fields map[string]string, irdi string) DataSpecificationIec61
 		"dataType":      {"data type", "datatype", "iec 61360 data type"},
 		"valueFormat":   {"format", "value format"},
 		"levelType":     {"level type"},
-		"sourceOfDef":   {"source of definition", "source"},
+		"sourceOfDef":   {"source of definition", "definition source", "source"},
 	}
 
 	get := func(keys []string) string {
@@ -264,97 +250,95 @@ func buildIEC61360(fields map[string]string, irdi string) DataSpecificationIec61
 		return ""
 	}
 
-	// preferredName & definition sind in IEC61360 Pflicht für PROPERTY (vgl. Tabelle in Spec)
+	// required EN fields
 	pref := get(labelMap["preferredName"])
 	if pref == "" {
-		// Fallback: versuche „designation“ o.ä.
-		for k, v := range fields {
-			if strings.Contains(k, "designation") || strings.Contains(k, "title") {
-				pref = v
-				break
-			}
+		var have []string
+		for k := range fields {
+			have = append(have, k)
 		}
-		if pref == "" {
-			pref = irdi // letzter Notnagel, damit XML formal vollständig ist
-		}
+		return ConceptDescription{}, fmt.Errorf("missing required field: preferredName (available keys: %v)", have)
 	}
 	defn := get(labelMap["definition"])
 	if defn == "" {
-		// Fallback: „note“/„remark“
-		for k, v := range fields {
-			if strings.Contains(k, "definition") || strings.Contains(k, "note") || strings.Contains(k, "remark") {
-				defn = v
-				break
-			}
-		}
-		if defn == "" {
-			defn = "N/A"
-		}
+		return ConceptDescription{}, fmt.Errorf("missing required field: definition")
+	}
+
+	// strict IEC61360 dataType (optional)
+	dtRaw := strings.TrimSpace(get(labelMap["dataType"]))
+	dt, err := mapDataTypeStrict(dtRaw)
+	if err != nil {
+		return ConceptDescription{}, err
 	}
 
 	ds := DataSpecificationIec61360{
-		XMLNS:         dsNS,
-		PreferredName: LangString{Language: "en", Text: pref},
-		Definition:    LangString{Language: "en", Text: defn},
-		DataType:      mapDataType(get(labelMap["dataType"])),
-		ValueFormat:   normalizeFormat(get(labelMap["valueFormat"])),
+		ModelType:     "DataSpecificationIec61360",
+		DataType:      dt,
+		Definition:    []LangString{{Language: "en", Text: defn}},
+		PreferredName: []LangString{{Language: "en", Text: pref}},
 		Unit:          get(labelMap["unit"]),
 		UnitId:        get(labelMap["unitId"]),
 		Symbol:        get(labelMap["symbol"]),
 		LevelType:     get(labelMap["levelType"]),
 		SourceOfDef:   get(labelMap["sourceOfDef"]),
+		ValueFormat:   strings.TrimSpace(get(labelMap["valueFormat"])),
 	}
-
-	if s := get(labelMap["shortName"]); s != "" {
-		ds.ShortName = &LangString{Language: "en", Text: s}
-	}
-
-	// ValueList (sofern im HTML vorhanden, häufig als Aufzählung)
 	ds.ValueList = extractValues(fields)
 
-	return ds
+	eds := EmbeddedDataSpecification{
+		DataSpecification: Reference{
+			Keys: []Key{{Type: "GlobalReference", Value: dataSpecURL}},
+			Type: "ExternalReference",
+		},
+		DataSpecificationContent: ds,
+	}
+
+	cd := ConceptDescription{
+		ModelType:                  "ConceptDescription",
+		EmbeddedDataSpecifications: []EmbeddedDataSpecification{eds},
+		Id:                         irdi,
+		IdShort:                    pref,
+	}
+	return cd, nil
 }
 
-func mapDataType(dt string) string {
-	// Normalisiere gängige Schreibweisen auf die IEC61360-Typen lt. AAS-Mapping (z.B. STRING, BOOLEAN, REAL_MEASURE, ...).
-	u := strings.ToUpper(strings.TrimSpace(dt))
-	switch u {
-	case "STRING", "BOOLEAN", "DATE", "TIME", "REAL_MEASURE", "INTEGER_MEASURE", "RATIONAL", "RATIONAL_MEASURE",
-		"COUNT", "BLOB", "FILE", "IRI", "IRDI", "LANGSTRING", "BOOLEAN_MEASURE", "TIME_OF_DAY":
-		return u
+func mapDataTypeStrict(dt string) (string, error) {
+	if dt == "" {
+		return "", nil
 	}
-	// Heuristik:
-	if strings.Contains(u, "REAL") || strings.Contains(u, "FLOAT") || strings.Contains(u, "DOUBLE") {
-		return "REAL_MEASURE"
+	allowed := map[string]struct{}{
+		"STRING":           {},
+		"BOOLEAN":          {},
+		"DATE":             {},
+		"TIME":             {},
+		"REAL_MEASURE":     {},
+		"INTEGER_MEASURE":  {},
+		"RATIONAL":         {},
+		"RATIONAL_MEASURE": {},
+		"COUNT":            {},
+		"BLOB":             {},
+		"FILE":             {},
+		"IRI":              {},
+		"IRDI":             {},
+		"LANGSTRING":       {},
+		"BOOLEAN_MEASURE":  {},
+		"TIME_OF_DAY":      {},
 	}
-	if strings.Contains(u, "INT") {
-		return "INTEGER_MEASURE"
+	u := strings.ToUpper(dt)
+	if _, ok := allowed[u]; !ok {
+		return "", fmt.Errorf("invalid IEC61360 data type: %q (heuristics not allowed)", dt)
 	}
-	if strings.Contains(u, "BOOL") {
-		return "BOOLEAN"
-	}
-	if strings.Contains(u, "STRING") || strings.Contains(u, "TEXT") {
-		return "STRING"
-	}
-	return u // ggf. leer
+	return u, nil
 }
 
-func normalizeFormat(f string) string {
-	return strings.TrimSpace(f)
-}
-
-// Suche einfache Aufzählungen im Feld-Material (z. B. "Value list", "Permitted values", etc.)
 func extractValues(fields map[string]string) []ValueReferencePair {
 	var pairs []ValueReferencePair
 	for k, v := range fields {
 		if strings.Contains(k, "value list") || strings.Contains(k, "permitted values") || strings.Contains(k, "enumeration") {
-			// Split nach Komma/Semikolon/Zeilenumbruch
-			tokens := splitList(v)
-			for _, t := range tokens {
+			for _, t := range splitList(v) {
 				if t == "" {
 					continue
 				}
-				// Optional: IRDI in Klammern erkennen, z. B. "On (0112/2///61360_4#ABCD12)"
 				val, id := splitValueAndIRDI(t)
 				pairs = append(pairs, ValueReferencePair{Value: val, ValueId: id})
 			}
@@ -378,7 +362,6 @@ func splitList(s string) []string {
 }
 
 func splitValueAndIRDI(s string) (val, id string) {
-	// Muster: "Text (0112/2///61360_4#AAA123)"
 	if i := strings.LastIndex(s, "("); i > 0 && strings.HasSuffix(s, ")") {
 		val = strings.TrimSpace(s[:i])
 		id = strings.TrimSpace(strings.TrimSuffix(s[i+1:], ")"))
@@ -387,50 +370,61 @@ func splitValueAndIRDI(s string) (val, id string) {
 	return strings.TrimSpace(s), ""
 }
 
-func saveAsIEC61360XML(ds DataSpecificationIec61360, filename string) error {
+// ---------- output ----------
+
+func saveConceptDescriptionJSON(cd ConceptDescription, filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	_, _ = f.WriteString(xml.Header)
-	enc := xml.NewEncoder(f)
-	enc.Indent("", "  ")
-	return enc.Encode(ds)
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	return enc.Encode(cd)
 }
+
+// ---------- main ----------
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Gib die CDD IRDI ein: ")
+	fmt.Print("Enter the CDD IRDI: ")
 	userInput, _ := reader.ReadString('\n')
 	userInput = strings.TrimSpace(userInput)
 
 	cleaned, err := cleanInput(userInput)
 	if err != nil {
 		fmt.Printf(" %v\n", err)
-		return
+		os.Exit(1)
 	}
 
 	number, ok := extractNumber(userInput)
 	if !ok {
-		fmt.Println(" Keine gültige Nummer zwischen '///' und '#' gefunden!")
-		return
+		fmt.Println(" No valid number found between '///' and '#'!")
+		os.Exit(1)
 	}
 
 	fullURL := buildURL(number, cleaned)
-	fmt.Printf("\n Rufe folgende URL auf:\n%s\n\n", fullURL)
+	fmt.Printf("\n Fetching URL:\n%s\n\n", fullURL)
 
-	htmlFilename := fmt.Sprintf("%s_%s.html", number, cleaned)
-	iecXMLFilename := fmt.Sprintf("%s_%s.iec61360.xml", number, cleaned)
+	jsonFilename := fmt.Sprintf("%s_%s.conceptdescription.json", number, cleaned)
 
-	node, ok := fetchEnglishSection(fullURL, htmlFilename)
-	if ok && node != nil {
-		fields := extractFields(node)
-		ds := buildIEC61360(fields, userInput) // IRDI als letzter Fallback für preferredName
-		if err := saveAsIEC61360XML(ds, iecXMLFilename); err != nil {
-			fmt.Printf(" Fehler beim Schreiben der IEC61360-XML: %v\n", err)
-		} else {
-			fmt.Printf(" IEC61360-XML gespeichert als: %s\n", iecXMLFilename)
-		}
+	node, ok := fetchEnglishSection(fullURL)
+	if !ok || node == nil {
+		os.Exit(1)
+	}
+
+	fields := extractFields(node)
+
+	cd, err := buildConceptDescriptionStrict(fields, userInput)
+	if err != nil {
+		fmt.Printf(" Error building ConceptDescription: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := saveConceptDescriptionJSON(cd, jsonFilename); err != nil {
+		fmt.Printf(" Error writing ConceptDescription JSON: %v\n", err)
+		os.Exit(1)
+	} else {
+		fmt.Printf(" ConceptDescription JSON saved as: %s\n", jsonFilename)
 	}
 }
