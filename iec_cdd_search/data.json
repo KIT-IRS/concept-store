@@ -1,34 +1,68 @@
-{
+[
+  {
     "modelType": "ConceptDescription",
     "embeddedDataSpecifications": [
-        {
-            "dataSpecification": {
-                "keys": [
-                    {
-                        "type": "GlobalReference",
-                        "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
-                    }
-                ],
-                "type": "ExternalReference"
-            },
-            "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "definition": [
-                    {
-                        "language": "en",
-                        "text": "switch which, in the open position, satisfies the isolating requirements specified for a disconnector"
-                    }
-                ],
-                "preferredName": [
-                    {
-                        "language": "en",
-                        "text": "Switch-disconnector"
-                    }
-                ],
-                "sourceOfDefinition": "IEC 60050-441: 1984, 441-14-12"
+      {
+        "dataSpecification": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
             }
+          ],
+          "type": "ExternalReference"
+        },
+        "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "definition": [
+            {
+              "language": "en",
+              "text": "part of the actuating system of mechanical switching device designed to be held in the operator's hand"
+            }
+          ],
+          "preferredName": [
+            {
+              "language": "en",
+              "text": "Operating handle (of a mechanical switching device)"
+            }
+          ]
         }
+      }
     ],
-    "id": "0112/2///62683#ACC301#001",
-    "idShort": "Switch-disconnector"
-}
+    "id": "0112/2///62683#ACC304#001",
+    "idShort": "Operating handle (of a mechanical switching device)"
+  },
+  {
+    "modelType": "ConceptDescription",
+    "embeddedDataSpecifications": [
+      {
+        "dataSpecification": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "definition": [
+            {
+              "language": "en",
+              "text": "rotary switch, the actuating system of which has to be rotated to one or more selectable positions in order to achieve a change in contacts state"
+            }
+          ],
+          "preferredName": [
+            {
+              "language": "en",
+              "text": "Cam-switch"
+            }
+          ]
+        }
+      }
+    ],
+    "id": "0112/2///62683#ACC306#001",
+    "idShort": "Cam-switch"
+  }
+]

@@ -14,6 +14,7 @@ import (
 
 const baseURL = "https://cdd.iec.ch/cdd/"
 const dataSpecURL = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+const dataFilename = "data.json"
 
 // ---------- input / URL helpers ----------
 
@@ -370,17 +371,65 @@ func splitValueAndIRDI(s string) (val, id string) {
 	return strings.TrimSpace(s), ""
 }
 
-// ---------- output ----------
+// ---------- JSON handling (robust, handles empty file, atomic write) ----------
 
-func saveConceptDescriptionJSON(cd ConceptDescription, filename string) error {
-	f, err := os.Create(filename)
+func idExistsInFile(id, filename string) (bool, error) {
+	b, err := os.ReadFile(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	trimmed := strings.TrimSpace(string(b))
+	if trimmed == "" { // empty file → treat as empty list
+		return false, nil
+	}
+
+	var list []ConceptDescription
+	if err := json.Unmarshal([]byte(trimmed), &list); err != nil {
+		return false, fmt.Errorf("failed to parse %s: %w", filename, err)
+	}
+	for _, item := range list {
+		if item.Id == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func appendConceptDescription(cd ConceptDescription, filename string) error {
+	var list []ConceptDescription
+
+	// read existing contents if any
+	if b, err := os.ReadFile(filename); err == nil {
+		trimmed := strings.TrimSpace(string(b))
+		if trimmed != "" {
+			if err := json.Unmarshal([]byte(trimmed), &list); err != nil {
+				return fmt.Errorf("failed to parse %s: %w", filename, err)
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read %s: %w", filename, err)
+	}
+
+	list = append(list, cd)
+
+	out, err := json.MarshalIndent(list, "", "  ")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	return enc.Encode(cd)
+
+	// atomic write: write to temp file, then rename
+	tmp := filename + ".tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return fmt.Errorf("failed to write temp file %s: %w", tmp, err)
+	}
+	if err := os.Rename(tmp, filename); err != nil {
+		return fmt.Errorf("failed to replace %s: %w", filename, err)
+	}
+	return nil
 }
 
 // ---------- main ----------
@@ -390,6 +439,17 @@ func main() {
 	fmt.Print("Enter the CDD IRDI: ")
 	userInput, _ := reader.ReadString('\n')
 	userInput = strings.TrimSpace(userInput)
+
+	// Early exit if ID already exists in data.json
+	exists, err := idExistsInFile(userInput, dataFilename)
+	if err != nil {
+		fmt.Printf(" Error reading %s: %v\n", dataFilename, err)
+		os.Exit(1)
+	}
+	if exists {
+		fmt.Printf(" Entry with id %s already exists in %s — skipping.\n", userInput, dataFilename)
+		os.Exit(0)
+	}
 
 	cleaned, err := cleanInput(userInput)
 	if err != nil {
@@ -406,8 +466,6 @@ func main() {
 	fullURL := buildURL(number, cleaned)
 	fmt.Printf("\n Fetching URL:\n%s\n\n", fullURL)
 
-	jsonFilename := fmt.Sprintf("%s_%s.conceptdescription.json", number, cleaned)
-
 	node, ok := fetchEnglishSection(fullURL)
 	if !ok || node == nil {
 		os.Exit(1)
@@ -421,10 +479,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := saveConceptDescriptionJSON(cd, jsonFilename); err != nil {
-		fmt.Printf(" Error writing ConceptDescription JSON: %v\n", err)
+	if err := appendConceptDescription(cd, dataFilename); err != nil {
+		fmt.Printf(" Error writing %s: %v\n", dataFilename, err)
 		os.Exit(1)
-	} else {
-		fmt.Printf(" ConceptDescription JSON saved as: %s\n", jsonFilename)
 	}
+
+	fmt.Printf(" Appended ConceptDescription to %s (id: %s)\n", dataFilename, cd.Id)
 }
