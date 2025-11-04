@@ -7,8 +7,8 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -v -o /usr/local/bin/app
+RUN go build -v -o /usr/local/bin/concept-store
 
 EXPOSE 3737
 
-CMD ["app"]
+CMD ["/usr/local/bin/concept-store"]

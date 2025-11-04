@@ -1,12 +1,138 @@
 {
-  "1": {
-    "Unit": "Volt",
-    "Value": "5",
-    "Description": "example1"
-  },
-  "2": {
-    "Unit": "Ampere",
-    "Value": "3",
-    "Description": "example2"
-  }
+  "paging_metadata": {},
+  "result": [
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "dataType": "REAL_MEASURE",
+            "definition": [
+              {
+                "language": "en",
+                "text": "temperature of the surrounding operating environment of a component or system"
+              },
+              {
+                "language": "de",
+                "text": "Temperatur des umgebenden Raumes, in dem das Bauteil das Leitungssystem oder die Anlage arbeitet"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "ambient temperature"
+              },
+              {
+                "language": "de",
+                "text": "Umgebungstemperatur"
+              }
+            ],
+            "unit": "°C"
+          }
+        }
+      ],
+      "id": "nummer3",
+      "idShort": "Temperature"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "dataType": "REAL_MEASURE",
+            "definition": [
+              {
+                "language": "en",
+                "text": "measured ambient humidity"
+              },
+              {
+                "language": "de",
+                "text": "gemessene Umgebungsfeuchte"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "ambient humidity"
+              }
+            ],
+            "shortName": [
+              {
+                "language": "de",
+                "text": "Umgebungsfeuchte"
+              }
+            ],
+            "unit": "%"
+          }
+        }
+      ],
+      "id": "nummer2",
+      "idShort": "Humidity"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "dataType": "REAL_MEASURE",
+            "definition": [
+              {
+                "language": "en",
+                "text": "concentration of CO2 in the air"
+              },
+              {
+                "language": "de",
+                "text": "Konzentration von CO2 in der Luft"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "CO2 concentration"
+              }
+            ],
+            "shortName": [
+              {
+                "language": "de",
+                "text": "CO2 Konzentration"
+              }
+            ],
+            "unit": "ppm"
+          }
+        }
+      ],
+      "id": "nummer1",
+      "idShort": "AirQuality"
+    }
+  ]
 }

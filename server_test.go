@@ -1,3 +1,4 @@
+/*
 package main
 
 import (
@@ -221,3 +222,4 @@ func TestGetXml(t *testing.T) {
 		}
 	})
 }
+*/

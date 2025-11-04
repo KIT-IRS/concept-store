@@ -11,8 +11,75 @@ import (
 	"time"
 )
 
-// define PORT
 const PORT = "3737"
+
+// Datenstrukturen
+type LangString struct {
+	Language string `json:"language" xml:"language"`
+	Text     string `json:"text" xml:"text"`
+}
+
+type DataSpecificationContent struct {
+	ModelType     string       `json:"modelType" xml:"modelType"`
+	DataType      string       `json:"dataType" xml:"dataType"`
+	Definition    []LangString `json:"definition" xml:"definition"`
+	PreferredName []LangString `json:"preferredName" xml:"preferredName"`
+	ShortName     []LangString `json:"shortName,omitempty" xml:"shortName,omitempty"`
+	Unit          string       `json:"unit" xml:"unit"`
+}
+
+type Key struct {
+	Type  string `json:"type" xml:"type"`
+	Value string `json:"value" xml:"value"`
+}
+
+type DataSpecification struct {
+	Keys []Key  `json:"keys" xml:"keys"`
+	Type string `json:"type" xml:"type"`
+}
+
+type EmbeddedDataSpecification struct {
+	DataSpecification        DataSpecification        `json:"dataSpecification" xml:"dataSpecification"`
+	DataSpecificationContent DataSpecificationContent `json:"dataSpecificationContent" xml:"dataSpecificationContent"`
+}
+
+type ConceptDescription struct {
+	ModelType                  string                      `json:"modelType" xml:"modelType"`
+	EmbeddedDataSpecifications []EmbeddedDataSpecification `json:"embeddedDataSpecifications" xml:"embeddedDataSpecifications"`
+	ID                         string                      `json:"id" xml:"id"`
+	IDShort                    string                      `json:"idShort" xml:"idShort"`
+}
+
+// Globale Datenmap
+var Data = map[string]ConceptDescription{}
+
+func LoadData(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("error reading file: %w", err)
+	}
+	defer file.Close()
+
+	var wrapper struct {
+		Result []ConceptDescription `json:"result"`
+	}
+
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&wrapper); err != nil {
+		return fmt.Errorf("error decoding json: %w", err)
+	}
+
+	for _, cd := range wrapper.Result {
+		Data[cd.ID] = cd
+	}
+
+	fmt.Printf("Loaded %d ConceptDescriptions\n", len(Data))
+	for id := range Data {
+		fmt.Println("Available ID:", id)
+	}
+
+	return nil
+}
 
 func getHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
@@ -25,41 +92,34 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "concept store")
 }
 
-type DataOutput struct {
-	Unit        string `json:"Unit" xml:"Unit"`
-	Value       string `json:"Value" xml:"Value"`
-	Description string `json:"Description" xml:"Description"`
-}
+func getAnswer(r *http.Request) (string, ConceptDescription, int, error) {
+	id := r.URL.Query().Get("id")
 
-var Data = map[string]DataOutput{}
-
-func LoadData(filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return fmt.Errorf("error reading file: %w", err)
-	}
-	defer file.Close()
-
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&Data); err != nil {
-		return fmt.Errorf("error decoding json: %w", err)
+	if id == "" {
+		return "", ConceptDescription{}, http.StatusBadRequest, fmt.Errorf("missing query param: id")
 	}
 
-	return nil
+	val, ok := Data[id]
+	if !ok {
+		fmt.Println("ID not found. Available IDs:")
+		for k := range Data {
+			fmt.Println("-", k)
+		}
+		return "", ConceptDescription{}, http.StatusNotFound, fmt.Errorf("not found")
+	}
+	return id, val, http.StatusOK, nil
 }
 
 func getJson(w http.ResponseWriter, r *http.Request) {
 	id, val, errCode, err := getAnswer(r)
-
 	if err != nil {
 		http.Error(w, err.Error(), errCode)
 		return
 	}
 	type resp struct {
-		ID     string     `json:"id"`
-		Answer DataOutput `json:"answer"`
+		ID     string             `json:"id"`
+		Answer ConceptDescription `json:"answer"`
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(resp{ID: id, Answer: val})
@@ -67,46 +127,27 @@ func getJson(w http.ResponseWriter, r *http.Request) {
 
 func getXml(w http.ResponseWriter, r *http.Request) {
 	id, val, errCode, err := getAnswer(r)
-
 	if err != nil {
 		http.Error(w, err.Error(), errCode)
 		return
 	}
-
 	type AnswerXML struct {
-		XMLName    xml.Name `xml:"answer"`
-		ID         string   `xml:"id"`
-		DataOutput `xml:",inline"`
+		XMLName            xml.Name `xml:"answer"`
+		ID                 string   `xml:"id"`
+		ConceptDescription `xml:",inline"`
 	}
-
 	w.Header().Set("Content-Type", "application/xml")
 	w.WriteHeader(http.StatusOK)
-	_ = xml.NewEncoder(w).Encode(AnswerXML{ID: id, DataOutput: val})
-}
-
-func getAnswer(r *http.Request) (string, DataOutput, int, error) {
-	if r.Method != http.MethodGet {
-		return "", DataOutput{}, http.StatusMethodNotAllowed, fmt.Errorf("method not allowed")
-	}
-
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		return "", DataOutput{}, http.StatusBadRequest, fmt.Errorf("missing query param: id")
-	}
-
-	val, ok := Data[id]
-	if !ok {
-		return "", DataOutput{}, http.StatusNotFound, fmt.Errorf("not found")
-	}
-	return id, val, http.StatusOK, nil
+	_ = xml.NewEncoder(w).Encode(AnswerXML{ID: id, ConceptDescription: val})
 }
 
 func main() {
-	err := LoadData("data.json") // load file "data.json"
+	err := LoadData("data.json")
 	if err != nil {
 		fmt.Printf("error reading files: %s\n", err)
 		os.Exit(1)
 	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", getHealth)
 	mux.HandleFunc("/json", getJson)
@@ -114,16 +155,14 @@ func main() {
 	mux.HandleFunc("/", getRoot)
 
 	server := &http.Server{
-		Addr:    ":" + PORT,
-		Handler: mux,
-
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-
-		MaxHeaderBytes: 512 * 1024, // 512 KB
+		Addr:           ":" + PORT,
+		Handler:        mux,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		IdleTimeout:    120 * time.Second,
+		MaxHeaderBytes: 512 * 1024,
 	}
-	// channel for graceful shutdown
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
@@ -134,11 +173,9 @@ func main() {
 		}
 	}()
 
-	// wait for shutdown signal
 	<-stop
 	fmt.Println("\nShutdown initiated...")
 
-	// context for shutdown with 5s grace period
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
