@@ -1,7 +1,6 @@
-package main
+package fetchcdd
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -443,35 +442,27 @@ func splitValueAndIRDI(s string) (val, id string) {
 	return strings.TrimSpace(s), ""
 }
 
-// ---------- main ----------
+func GetIRDIfromCS(irdi string) error {
+	fmt.Printf("fetching IRDI %s:\n", irdi)
+	userInput := strings.TrimSpace(irdi)
 
-func main() {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter the CDD IRDI: ")
-	userInput, _ := reader.ReadString('\n')
-	userInput = strings.TrimSpace(userInput)
-
-	// Early exit if ID already exists in data.json (within result array)
 	exists, err := idExistsInDataFile(userInput, dataFilename)
 	if err != nil {
-		fmt.Printf(" Error reading %s: %v\n", dataFilename, err)
-		os.Exit(1)
+		return fmt.Errorf("error reading %s: %v", dataFilename, err)
 	}
 	if exists {
-		fmt.Printf(" Entry with id %s already exists in %s — skipping.\n", userInput, dataFilename)
-		os.Exit(0)
+		fmt.Printf("Entry with id %s already exists in %s — skipping.\n", userInput, dataFilename)
+		return nil
 	}
 
 	cleaned, err := cleanInput(userInput)
 	if err != nil {
-		fmt.Printf(" %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	number, ok := extractNumber(userInput)
 	if !ok {
-		fmt.Println(" No valid number found between '///' and '#'!")
-		os.Exit(1)
+		return fmt.Errorf("no valid number found between '///' and '#'")
 	}
 
 	fullURL := buildURL(number, cleaned)
@@ -479,21 +470,20 @@ func main() {
 
 	node, ok := fetchEnglishSection(fullURL)
 	if !ok || node == nil {
-		os.Exit(1)
+		return fmt.Errorf("failed to fetch English section")
 	}
 
 	fields := extractFields(node)
 
 	cd, err := buildConceptDescriptionStrict(fields, userInput)
 	if err != nil {
-		fmt.Printf(" Error building ConceptDescription: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error building ConceptDescription: %v", err)
 	}
 
 	if err := appendConceptDescriptionToDataFile(cd, dataFilename); err != nil {
-		fmt.Printf(" Error updating %s: %v\n", dataFilename, err)
-		os.Exit(1)
+		return fmt.Errorf("error updating %s: %v", dataFilename, err)
 	}
 
-	fmt.Printf(" Appended ConceptDescription to %s (id: %s)\n", dataFilename, cd.Id)
+	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", dataFilename, cd.Id)
+	return nil
 }

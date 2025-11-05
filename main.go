@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"fetchcdd"
 	"fmt"
 	"net/http"
 	"os"
@@ -92,20 +93,37 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAnswer(r *http.Request) (string, ConceptDescription, int, error) {
-	id := r.URL.Query().Get("id")
+	fmt.Println("getAnswer called")
+
+	id := strings.TrimSpace(r.URL.Query().Get("id"))
+	fmt.Println("Requested ID:", id)
 
 	if id == "" {
 		return "", ConceptDescription{}, http.StatusBadRequest, fmt.Errorf("missing query param: id")
 	}
 
+	if strings.HasPrefix(id, "0112/2//") {
+		err := fetchcdd.GetIRDIfromCS(id)
+		if err != nil {
+			fmt.Printf("Error fetching IRDI: %s\n", err)
+		} else {
+			fmt.Println("fetchcdd call successful")
+		}
+
+		if err := LoadData("data.json"); err != nil {
+			fmt.Printf("Error reloading data.json: %s\n", err)
+		}
+	}
+
 	val, ok := Data[id]
 	if !ok {
-		fmt.Println("ID not found. Available IDs:")
+		fmt.Println("ID not found after fetch. Available IDs:")
 		for k := range Data {
 			fmt.Println("-", k)
 		}
 		return "", ConceptDescription{}, http.StatusNotFound, fmt.Errorf("not found")
 	}
+
 	return id, val, http.StatusOK, nil
 }
 

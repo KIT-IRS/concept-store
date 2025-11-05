@@ -76,12 +76,6 @@
                 "text": "ambient humidity"
               }
             ],
-            "shortName": [
-              {
-                "language": "de",
-                "text": "Umgebungsfeuchte"
-              }
-            ],
             "unit": "%"
           }
         }
@@ -121,18 +115,78 @@
                 "text": "CO2 concentration"
               }
             ],
-            "shortName": [
-              {
-                "language": "de",
-                "text": "CO2 Konzentration"
-              }
-            ],
             "unit": "ppm"
           }
         }
       ],
       "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration",
       "idShort": "AirQuality"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "feed-through terminal block for which each circuit can be disconnected"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Disconnect terminal block"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///62683#ACC703#001",
+      "idShort": "Disconnect terminal block"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "information about data communication interfaces"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Data communication"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///63213#KEA022#001",
+      "idShort": "Data communication"
     }
   ]
 }
