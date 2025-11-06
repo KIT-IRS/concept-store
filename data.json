@@ -41,8 +41,7 @@
           }
         }
       ],
-      "id": "0173-1#02-AAZ842#002",
-      "idShort": "Temperature"
+      "id": "0173-1#02-AAZ842#002"
     },
     {
       "modelType": "ConceptDescription",
@@ -80,8 +79,7 @@
           }
         }
       ],
-      "id": "0173-1#02-ABC147#002",
-      "idShort": "Humidity"
+      "id": "0173-1#02-ABC147#002"
     },
     {
       "modelType": "ConceptDescription",
@@ -119,8 +117,7 @@
           }
         }
       ],
-      "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration",
-      "idShort": "AirQuality"
+      "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration"
     },
     {
       "modelType": "ConceptDescription",
@@ -152,8 +149,7 @@
           }
         }
       ],
-      "id": "0112/2///62683#ACC703#001",
-      "idShort": "Disconnect terminal block"
+      "id": "0112/2///62683#ACC703#001"
     },
     {
       "modelType": "ConceptDescription",
@@ -185,8 +181,135 @@
           }
         }
       ],
-      "id": "0112/2///63213#KEA022#001",
-      "idShort": "Data communication"
+      "id": "0112/2///63213#KEA022#001"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "information about data communication interfaces of PQI"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Data communication for PQI"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///63213#KEB122#001"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "information about voltage measurement interfaces"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Input voltage measurement channel"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///63213#KEA018#001"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "all the conductive parts of the device which are intended to be included in a circuit other than the main circuit"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Control and auxiliary circuits"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///63508#KDA224#001"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "information necessary for unambiguous identification of the device"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Identification"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///63508#KDF010#001"
     }
   ]
 }

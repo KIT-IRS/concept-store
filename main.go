@@ -137,6 +137,10 @@ func getJsonByPath(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -147,6 +151,11 @@ func getJson(w http.ResponseWriter, r *http.Request) {
 	_, val, errCode, err := getAnswer(r)
 	if err != nil {
 		http.Error(w, err.Error(), errCode)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -161,6 +170,12 @@ func getXml(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), errCode)
 		return
 	}
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	type AnswerXML struct {
 		XMLName            xml.Name `xml:"answer"`
 		ID                 string   `xml:"id"`

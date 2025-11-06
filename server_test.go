@@ -1,4 +1,3 @@
-/*
 package main
 
 import (
@@ -11,6 +10,11 @@ import (
 	"testing"
 )
 
+type DataFile struct {
+	PagingMetadata map[string]any       `json:"paging_metadata"`
+	Result         []ConceptDescription `json:"result"`
+}
+
 // make a test http server
 func newTestServer() *httptest.Server {
 	mux := http.NewServeMux()
@@ -18,6 +22,7 @@ func newTestServer() *httptest.Server {
 	mux.HandleFunc("/json", getJson)
 	mux.HandleFunc("/xml", getXml)
 	mux.HandleFunc("/", getRoot)
+	mux.HandleFunc("/concept-store/", getJsonByPath)
 	return httptest.NewServer(mux)
 }
 func sendRequest(t *testing.T, method, UrlEnding string) *http.Response {
@@ -37,12 +42,33 @@ func sendRequest(t *testing.T, method, UrlEnding string) *http.Response {
 	}
 	return resp
 }
-func getTestData() map[string]DataOutput {
-	return map[string]DataOutput{
+func getTestData() map[string]ConceptDescription {
+	return map[string]ConceptDescription{
 		"11": {
-			Unit:        "Volt",
-			Value:       "5",
-			Description: "example1",
+			ModelType: "ConceptDescription",
+			ID:        "11",
+			IDShort:   "Voltage",
+			EmbeddedDataSpecifications: []EmbeddedDataSpecification{
+				{
+					DataSpecification: DataSpecification{
+						Type: "DataSpecificationIEC61360",
+						Keys: []Key{
+							{Type: "GlobalReference", Value: "some-value"},
+						},
+					},
+					DataSpecificationContent: DataSpecificationContent{
+						ModelType: "DataSpecificationIEC61360",
+						DataType:  "REAL_MEASURE",
+						Unit:      "Volt",
+						PreferredName: []LangString{
+							{Language: "en", Text: "Voltage"},
+						},
+						Definition: []LangString{
+							{Language: "en", Text: "Electric potential difference"},
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -71,41 +97,42 @@ func TestGetHealth(t *testing.T) {
 
 }
 func TestLoadData(t *testing.T) {
-	testData := getTestData()
+	testDataMap := getTestData()
 
-	// create temporary file
+	var testDataSlice []ConceptDescription
+	for _, v := range testDataMap {
+		testDataSlice = append(testDataSlice, v)
+	}
+
+	wrapper := struct {
+		Result []ConceptDescription `json:"result"`
+	}{
+		Result: testDataSlice,
+	}
+
 	tmpFile, err := os.CreateTemp("", "testdata*.json")
 	if err != nil {
 		t.Fatalf("error creating temporary file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name()) // remove temporary file after test
+	defer os.Remove(tmpFile.Name())
 
-	// write Data to file
 	encoder := json.NewEncoder(tmpFile)
-	if err := encoder.Encode(testData); err != nil {
+	if err := encoder.Encode(wrapper); err != nil {
 		t.Fatalf("error writing testdata to file: %v", err)
 	}
 	tmpFile.Close()
 
-	// load temporary file
 	err = LoadData(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("LoadData function gave an error: %v", err)
 	}
 
-	// check loaded Data
 	got, ok := Data["11"]
 	if !ok {
 		t.Fatalf("error could not find ID")
 	}
-	if got.Unit != "Volt" {
-		t.Errorf("error loaded Unit does not match: %v", got)
-	}
-	if got.Value != "5" {
-		t.Errorf("error loaded Value does not match: %v", got)
-	}
-	if got.Description != "example1" {
-		t.Errorf("error loaded Description does not match: %v", got)
+	if got.IDShort != "Voltage" {
+		t.Errorf("error loaded IDShort does not match: %v", got.IDShort)
 	}
 }
 
@@ -123,10 +150,7 @@ func TestGetJson(t *testing.T) {
 			t.Fatalf("Wrong Content-Type")
 		}
 
-		var result struct {
-			ID     string     `json:"id"`
-			Answer DataOutput `json:"answer"`
-		}
+		var result ConceptDescription
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			t.Fatalf("error decoding JSON: %v", err)
 		}
@@ -134,18 +158,10 @@ func TestGetJson(t *testing.T) {
 		if result.ID != "11" {
 			t.Errorf("ID=%q, expected %q", result.ID, "11")
 		}
-		if result.Answer.Unit != "Volt" {
-			t.Errorf("Answer.Unit=%q, expected %q", result.Answer.Unit, "Volt")
+		if result.IDShort != "Voltage" {
+			t.Errorf("IDShort=%q, expected %q", result.IDShort, "Voltage")
 		}
-		if result.Answer.Value != "5" {
-			t.Errorf("Answer.Value=%q, expected %q", result.Answer.Value, "5")
-		}
-		if result.Answer.Description != "example1" {
-			t.Errorf("Answer.Description=%q, expected %q", result.Answer.Description, "example1")
-		}
-
 	})
-
 	t.Run("MissingID", func(t *testing.T) {
 		resp := sendRequest(t, http.MethodGet, "/json")
 		defer resp.Body.Close()
@@ -187,14 +203,19 @@ func TestGetXml(t *testing.T) {
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		xmlContent := string(bodyBytes)
-		if !strings.Contains(xmlContent, "<Unit>Volt</Unit>") {
-			t.Errorf("XML-Contents contain unexpected <Unit>: %s", xmlContent)
+
+
+		if !strings.Contains(xmlContent, "<id>11</id>") {
+			t.Errorf("Missing <id> tag: %s", xmlContent)
 		}
-		if !strings.Contains(xmlContent, "<Value>5</Value>") {
-			t.Errorf("XML-Contents contain unexpected <Value>: %s", xmlContent)
+		if !strings.Contains(xmlContent, "<idShort>Voltage</idShort>") {
+			t.Errorf("Missing <idShort> tag: %s", xmlContent)
 		}
-		if !strings.Contains(xmlContent, "<Description>example1</Description>") {
-			t.Errorf("XML-Contents contain unexpected <Description>: %s", xmlContent)
+		if !strings.Contains(xmlContent, "<unit>Volt</unit>") {
+			t.Errorf("Missing <unit> tag: %s", xmlContent)
+		}
+		if !strings.Contains(xmlContent, "<text>Electric potential difference</text>") {
+			t.Errorf("Missing <definition> text: %s", xmlContent)
 		}
 	})
 
@@ -222,4 +243,70 @@ func TestGetXml(t *testing.T) {
 		}
 	})
 }
-*/
+func TestGetJsonByPath(t *testing.T) {
+
+	Data = map[string]ConceptDescription{
+		"http://localhost:3737/concept-store/11": {
+			ModelType: "ConceptDescription",
+			ID:        "11",
+			IDShort:   "Voltage",
+		},
+	}
+
+	ts := newTestServer()
+	defer ts.Close()
+
+	t.Run("Success", func(t *testing.T) {
+		resp, err := http.Get(ts.URL + "/concept-store/11")
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, http.StatusOK)
+		}
+		if !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+			t.Errorf("Wrong Content-Type: %s", resp.Header.Get("Content-Type"))
+		}
+
+		var result ConceptDescription
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("JSON decode error: %v", err)
+		}
+		if result.ID != "11" {
+			t.Errorf("ID = %q, expected %q", result.ID, "11")
+		}
+		if result.IDShort != "Voltage" {
+			t.Errorf("IDShort = %q, expected %q", result.IDShort, "Voltage")
+		}
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		resp, err := http.Get(ts.URL + "/concept-store/999")
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, http.StatusNotFound)
+		}
+	})
+
+	t.Run("WrongMethod", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodPost, ts.URL+"/concept-store/11", nil)
+		if err != nil {
+			t.Fatalf("Request creation failed: %v", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, http.StatusMethodNotAllowed)
+		}
+	})
+}
