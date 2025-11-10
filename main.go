@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+
 	"encoding/xml"
 	"fetchcdd"
 	"fmt"
@@ -11,48 +12,15 @@ import (
 	"os/signal"
 	"strings"
 	"time"
+
+	aasjsonization "github.com/aas-core-works/aas-core3.0-golang/jsonization"
+	aastypes "github.com/aas-core-works/aas-core3.0-golang/types"
+	aasxmlization "github.com/aas-core-works/aas-core3.0-golang/xmlization"
 )
 
 const PORT = "3737"
 
-// Datenstrukturen
-type LangString struct {
-	Language string `json:"language" xml:"language"`
-	Text     string `json:"text" xml:"text"`
-}
-
-type DataSpecificationContent struct {
-	ModelType     string       `json:"modelType" xml:"modelType"`
-	DataType      string       `json:"dataType" xml:"dataType"`
-	Definition    []LangString `json:"definition" xml:"definition"`
-	PreferredName []LangString `json:"preferredName" xml:"preferredName"`
-	ShortName     []LangString `json:"shortName,omitempty" xml:"shortName,omitempty"`
-	Unit          string       `json:"unit" xml:"unit"`
-}
-
-type Key struct {
-	Type  string `json:"type" xml:"type"`
-	Value string `json:"value" xml:"value"`
-}
-
-type DataSpecification struct {
-	Keys []Key  `json:"keys" xml:"keys"`
-	Type string `json:"type" xml:"type"`
-}
-
-type EmbeddedDataSpecification struct {
-	DataSpecification        DataSpecification        `json:"dataSpecification" xml:"dataSpecification"`
-	DataSpecificationContent DataSpecificationContent `json:"dataSpecificationContent" xml:"dataSpecificationContent"`
-}
-
-type ConceptDescription struct {
-	ModelType                  string                      `json:"modelType" xml:"modelType"`
-	EmbeddedDataSpecifications []EmbeddedDataSpecification `json:"embeddedDataSpecifications" xml:"embeddedDataSpecifications"`
-	ID                         string                      `json:"id" xml:"id"`
-	IDShort                    string                      `json:"idShort" xml:"idShort"`
-}
-
-var Data = map[string]ConceptDescription{}
+var Data = map[string]aastypes.IConceptDescription{}
 
 func LoadData(filename string) error {
 	file, err := os.Open(filename)
@@ -61,17 +29,25 @@ func LoadData(filename string) error {
 	}
 	defer file.Close()
 
-	var wrapper struct {
-		Result []ConceptDescription `json:"result"`
-	}
-
 	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&wrapper); err != nil {
+
+	var raw map[string]interface{}
+	if err := decoder.Decode(&raw); err != nil {
 		return fmt.Errorf("error decoding json: %w", err)
 	}
 
-	for _, cd := range wrapper.Result {
-		Data[cd.ID] = cd
+	resultRaw, ok := raw["result"].([]interface{})
+	if !ok {
+		return fmt.Errorf("missing or invalid 'result' field")
+	}
+
+	for _, item := range resultRaw {
+		cd, err := aasjsonization.ConceptDescriptionFromJsonable(item)
+		if err != nil {
+			fmt.Printf("error parsing ConceptDescription: %s\n", err)
+			continue
+		}
+		Data[cd.ID()] = cd
 	}
 
 	fmt.Printf("Loaded %d ConceptDescriptions\n", len(Data))
@@ -92,14 +68,14 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "main_page.html")
 }
 
-func getAnswer(r *http.Request) (string, ConceptDescription, int, error) {
+func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, error) {
 	fmt.Println("getAnswer called")
 
 	id := strings.TrimSpace(r.URL.Query().Get("id"))
 	fmt.Println("Requested ID:", id)
 
 	if id == "" {
-		return "", ConceptDescription{}, http.StatusBadRequest, fmt.Errorf("missing query param: id")
+		return "", &aastypes.ConceptDescription{}, http.StatusBadRequest, fmt.Errorf("missing query param: id")
 	}
 
 	if strings.HasPrefix(id, "0112/2//") {
@@ -121,7 +97,7 @@ func getAnswer(r *http.Request) (string, ConceptDescription, int, error) {
 		for k := range Data {
 			fmt.Println("-", k)
 		}
-		return "", ConceptDescription{}, http.StatusNotFound, fmt.Errorf("not found")
+		return "", &aastypes.ConceptDescription{}, http.StatusNotFound, fmt.Errorf("not found")
 	}
 
 	return id, val, http.StatusOK, nil
@@ -144,7 +120,15 @@ func getJsonByPath(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(val)
+	jsonable, err := aasjsonization.ToJsonable(val)
+	if err != nil {
+		http.Error(w, "serialization error", http.StatusInternalServerError)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(jsonable); err != nil {
+		http.Error(w, "json encode error", http.StatusInternalServerError)
+	}
+
 }
 
 func getJson(w http.ResponseWriter, r *http.Request) {
@@ -161,29 +145,32 @@ func getJson(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(val)
+	jsonable, err := aasjsonization.ToJsonable(val)
+	if err != nil {
+		http.Error(w, "serialization error", http.StatusInternalServerError)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(jsonable); err != nil {
+		http.Error(w, "json encode error", http.StatusInternalServerError)
+	}
 }
 
 func getXml(w http.ResponseWriter, r *http.Request) {
-	id, val, errCode, err := getAnswer(r)
+	fmt.Printf("getXML angekommen")
+	_, val, errCode, err := getAnswer(r)
 	if err != nil {
 		http.Error(w, err.Error(), errCode)
 		return
 	}
-
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	type AnswerXML struct {
-		XMLName            xml.Name `xml:"answer"`
-		ID                 string   `xml:"id"`
-		ConceptDescription `xml:",inline"`
+	w.Write([]byte(xml.Header))
+	if err := aasxmlization.Marshal(xml.NewEncoder(w), val, true); err != nil {
+		http.Error(w, "XML serialization error", http.StatusInternalServerError)
+		return
 	}
-	w.Header().Set("Content-Type", "application/xml")
-	w.WriteHeader(http.StatusOK)
-	_ = xml.NewEncoder(w).Encode(AnswerXML{ID: id, ConceptDescription: val})
 }
 
 func main() {
