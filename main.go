@@ -78,7 +78,8 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 		return "", &aastypes.ConceptDescription{}, http.StatusBadRequest, fmt.Errorf("missing query param: id")
 	}
 
-	if strings.HasPrefix(id, "0112/2//") {
+	if strings.HasPrefix(id, "0112/") {
+		fmt.Println("cdd erkannt")
 		err := fetchcdd.GetIRDIfromCS(id)
 		if err != nil {
 			fmt.Printf("Error fetching IRDI: %s\n", err)
@@ -156,7 +157,6 @@ func getJson(w http.ResponseWriter, r *http.Request) {
 }
 
 func getXml(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("getXML angekommen")
 	_, val, errCode, err := getAnswer(r)
 	if err != nil {
 		http.Error(w, err.Error(), errCode)

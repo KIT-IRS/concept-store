@@ -45,7 +45,8 @@ func buildURL(number, cleaned string) string {
 		return fmt.Sprintf("%siectc85/iec63213.nsf/TU0/%s", baseURL, cleaned)
 	}
 	if strings.Contains(number, "_") {
-		prefix := "iec" + strings.ReplaceAll(number, "_", "-")
+		cleanedNumber := regexp.MustCompile(`_\d`).ReplaceAllString(number, "")
+		prefix := "iec" + strings.ReplaceAll(cleanedNumber, "_", "")
 		return fmt.Sprintf("%s%s/%s.nsf/TU0/%s", baseURL, prefix, prefix, cleaned)
 	}
 	prefix := "iec" + number

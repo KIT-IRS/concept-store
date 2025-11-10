@@ -41,7 +41,8 @@
           }
         }
       ],
-      "id": "0173-1#02-AAZ842#002"
+      "id": "0173-1#02-AAZ842#002",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -79,7 +80,8 @@
           }
         }
       ],
-      "id": "0173-1#02-ABC147#002"
+      "id": "0173-1#02-ABC147#002",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -117,7 +119,8 @@
           }
         }
       ],
-      "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration"
+      "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -149,7 +152,8 @@
           }
         }
       ],
-      "id": "0112/2///62683#ACC703#001"
+      "id": "0112/2///62683#ACC703#001",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -181,7 +185,8 @@
           }
         }
       ],
-      "id": "0112/2///63213#KEA022#001"
+      "id": "0112/2///63213#KEA022#001",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -213,7 +218,8 @@
           }
         }
       ],
-      "id": "0112/2///63213#KEB122#001"
+      "id": "0112/2///63213#KEB122#001",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -245,7 +251,8 @@
           }
         }
       ],
-      "id": "0112/2///63213#KEA018#001"
+      "id": "0112/2///63213#KEA018#001",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -277,7 +284,8 @@
           }
         }
       ],
-      "id": "0112/2///63508#KDA224#001"
+      "id": "0112/2///63508#KDA224#001",
+      "idShort": ""
     },
     {
       "modelType": "ConceptDescription",
@@ -309,7 +317,75 @@
           }
         }
       ],
-      "id": "0112/2///63508#KDF010#001"
+      "id": "0112/2///63508#KDF010#001",
+      "idShort": ""
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "switch-disconnector in which a fuse-link or a fuse-carrier with fuse-link forms the moving contact"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Fuse-switch-disconnector"
+              }
+            ],
+            "sourceOfDefinition": "IEC 60050-441: 1984, 441-14-19"
+          }
+        }
+      ],
+      "id": "0112/2///62683#ACC303#001",
+      "idShort": "Fuse-switch-disconnector"
+    },
+    {
+      "modelType": "ConceptDescription",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "definition": [
+              {
+                "language": "en",
+                "text": "substances which permit very less current flow through them"
+              }
+            ],
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "dielectric and insulating material"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///61360_4#AAA231#001",
+      "idShort": "dielectric and insulating material"
     }
   ]
 }
