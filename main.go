@@ -166,11 +166,13 @@ func getXml(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	w.Header().Set("Content-Type", "application/xml")
 	w.Write([]byte(xml.Header))
 	if err := aasxmlization.Marshal(xml.NewEncoder(w), val, true); err != nil {
 		http.Error(w, "XML serialization error", http.StatusInternalServerError)
 		return
 	}
+
 }
 
 func main() {

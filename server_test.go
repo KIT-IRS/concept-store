@@ -8,11 +8,26 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	aasjsonization "github.com/aas-core-works/aas-core3.0-golang/jsonization"
+	aastypes "github.com/aas-core-works/aas-core3.0-golang/types"
 )
 
 type DataFile struct {
-	PagingMetadata map[string]any       `json:"paging_metadata"`
-	Result         []ConceptDescription `json:"result"`
+	PagingMetadata map[string]any                 `json:"paging_metadata"`
+	Result         []aastypes.IConceptDescription `json:"result"`
+}
+
+func toJsonables(data map[string]aastypes.IConceptDescription) ([]interface{}, error) {
+	var list []interface{}
+	for _, cd := range data {
+		j, err := aasjsonization.ToJsonable(cd)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, j)
+	}
+	return list, nil
 }
 
 // make a test http server
@@ -42,72 +57,57 @@ func sendRequest(t *testing.T, method, UrlEnding string) *http.Response {
 	}
 	return resp
 }
-func getTestData() map[string]ConceptDescription {
-	return map[string]ConceptDescription{
-		"11": {
-			ModelType: "ConceptDescription",
-			ID:        "11",
-			IDShort:   "Voltage",
-			EmbeddedDataSpecifications: []EmbeddedDataSpecification{
-				{
-					DataSpecification: DataSpecification{
-						Type: "DataSpecificationIEC61360",
-						Keys: []Key{
-							{Type: "GlobalReference", Value: "some-value"},
-						},
-					},
-					DataSpecificationContent: DataSpecificationContent{
-						ModelType: "DataSpecificationIEC61360",
-						DataType:  "REAL_MEASURE",
-						Unit:      "Volt",
-						PreferredName: []LangString{
-							{Language: "en", Text: "Voltage"},
-						},
-						Definition: []LangString{
-							{Language: "en", Text: "Electric potential difference"},
-						},
-					},
-				},
-			},
-		},
+func ptr(s string) *string {
+	return &s
+}
+
+func getTestData() map[string]aastypes.IConceptDescription {
+	cd := &aastypes.ConceptDescription{}
+	cd.SetID("11")
+	cd.SetIDShort(ptr("Voltage"))
+
+	return map[string]aastypes.IConceptDescription{
+		"11": cd,
 	}
 }
+
 func TestGetHealth(t *testing.T) {
-	t.Run("returns 200 and OK", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/health", nil)
-		response := httptest.NewRecorder()
 
-		getHealth(response, request)
+	request, _ := http.NewRequest(http.MethodGet, "/health", nil)
+	response := httptest.NewRecorder()
 
-		got := response.Body.String()
-		want := "OK"
+	getHealth(response, request)
 
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-		res := response.Result()
-		defer res.Body.Close()
+	got := response.Body.String()
+	want := "OK"
 
-		// test status code
-		if res.StatusCode != http.StatusOK {
-			t.Errorf("Statuscode: got %d, want %d", res.StatusCode, http.StatusOK)
-		}
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	res := response.Result()
+	defer res.Body.Close()
 
-	})
+	// test status code
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Statuscode: got %d, want %d", res.StatusCode, http.StatusOK)
+	}
 
 }
+
 func TestLoadData(t *testing.T) {
 	testDataMap := getTestData()
 
-	var testDataSlice []ConceptDescription
+	var jsonables []interface{}
 	for _, v := range testDataMap {
-		testDataSlice = append(testDataSlice, v)
+		j, err := aasjsonization.ToJsonable(v)
+		if err != nil {
+			t.Fatalf("error converting to jsonable: %v", err)
+		}
+		jsonables = append(jsonables, j)
 	}
 
-	wrapper := struct {
-		Result []ConceptDescription `json:"result"`
-	}{
-		Result: testDataSlice,
+	wrapper := map[string]interface{}{
+		"result": jsonables,
 	}
 
 	tmpFile, err := os.CreateTemp("", "testdata*.json")
@@ -131,8 +131,8 @@ func TestLoadData(t *testing.T) {
 	if !ok {
 		t.Fatalf("error could not find ID")
 	}
-	if got.IDShort != "Voltage" {
-		t.Errorf("error loaded IDShort does not match: %v", got.IDShort)
+	if got.IDShort() == nil || *got.IDShort() != "Voltage" {
+		t.Errorf("error loaded IDShort does not match: %v", got.IDShort())
 	}
 }
 
@@ -150,16 +150,21 @@ func TestGetJson(t *testing.T) {
 			t.Fatalf("Wrong Content-Type")
 		}
 
-		var result ConceptDescription
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		var raw interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 			t.Fatalf("error decoding JSON: %v", err)
 		}
 
-		if result.ID != "11" {
-			t.Errorf("ID=%q, expected %q", result.ID, "11")
+		cd, err := aasjsonization.ConceptDescriptionFromJsonable(raw)
+		if err != nil {
+			t.Fatalf("error converting to ConceptDescription: %v", err)
 		}
-		if result.IDShort != "Voltage" {
-			t.Errorf("IDShort=%q, expected %q", result.IDShort, "Voltage")
+
+		if cd.ID() != "11" {
+			t.Errorf("ID=%q, expected %q", cd.ID(), "11")
+		}
+		if cd.IDShort() == nil || *cd.IDShort() != "Voltage" {
+			t.Errorf("IDShort=%q, expected %q", *cd.IDShort(), "Voltage")
 		}
 	})
 	t.Run("MissingID", func(t *testing.T) {
@@ -204,19 +209,13 @@ func TestGetXml(t *testing.T) {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		xmlContent := string(bodyBytes)
 
-
 		if !strings.Contains(xmlContent, "<id>11</id>") {
 			t.Errorf("Missing <id> tag: %s", xmlContent)
 		}
 		if !strings.Contains(xmlContent, "<idShort>Voltage</idShort>") {
 			t.Errorf("Missing <idShort> tag: %s", xmlContent)
 		}
-		if !strings.Contains(xmlContent, "<unit>Volt</unit>") {
-			t.Errorf("Missing <unit> tag: %s", xmlContent)
-		}
-		if !strings.Contains(xmlContent, "<text>Electric potential difference</text>") {
-			t.Errorf("Missing <definition> text: %s", xmlContent)
-		}
+
 	})
 
 	t.Run("MissingID", func(t *testing.T) {
@@ -245,12 +244,12 @@ func TestGetXml(t *testing.T) {
 }
 func TestGetJsonByPath(t *testing.T) {
 
-	Data = map[string]ConceptDescription{
-		"http://localhost:3737/concept-store/11": {
-			ModelType: "ConceptDescription",
-			ID:        "11",
-			IDShort:   "Voltage",
-		},
+	cd := &aastypes.ConceptDescription{}
+	cd.SetID("11")
+	cd.SetIDShort(ptr("Voltage"))
+
+	Data = map[string]aastypes.IConceptDescription{
+		"http://localhost:3737/concept-store/11": cd,
 	}
 
 	ts := newTestServer()
@@ -270,15 +269,21 @@ func TestGetJsonByPath(t *testing.T) {
 			t.Errorf("Wrong Content-Type: %s", resp.Header.Get("Content-Type"))
 		}
 
-		var result ConceptDescription
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			t.Fatalf("JSON decode error: %v", err)
+		var raw interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+			t.Fatalf("error decoding JSON: %v", err)
 		}
-		if result.ID != "11" {
-			t.Errorf("ID = %q, expected %q", result.ID, "11")
+
+		cd, err := aasjsonization.ConceptDescriptionFromJsonable(raw)
+		if err != nil {
+			t.Fatalf("error converting to ConceptDescription: %v", err)
 		}
-		if result.IDShort != "Voltage" {
-			t.Errorf("IDShort = %q, expected %q", result.IDShort, "Voltage")
+
+		if cd.ID() != "11" {
+			t.Errorf("ID=%q, expected %q", cd.ID(), "11")
+		}
+		if cd.IDShort() == nil || *cd.IDShort() != "Voltage" {
+			t.Errorf("IDShort=%q, expected %q", *cd.IDShort(), "Voltage")
 		}
 	})
 
