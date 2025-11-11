@@ -18,13 +18,15 @@ import (
 	aasxmlization "github.com/aas-core-works/aas-core3.0-golang/xmlization"
 )
 
-const filename = fetchcdd.DataFilename
+const FILENAME = fetchcdd.DataFilename
+const MAINPAGE = "main_page.html"
 const PORT = "3737"
+const URLBASE = "http://localhost:"
 
 var Data = map[string]aastypes.IConceptDescription{}
 
-func LoadData(filename string) error {
-	file, err := os.Open(filename)
+func LoadData(FILENAME string) error {
+	file, err := os.Open(FILENAME)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -66,7 +68,7 @@ func getHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "main_page.html")
+	http.ServeFile(w, r, MAINPAGE)
 }
 
 func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, error) {
@@ -80,7 +82,6 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 	}
 
 	if strings.HasPrefix(id, "0112/") {
-		fmt.Println("cdd erkannt")
 		err := fetchcdd.GetIRDIfromCS(id)
 		if err != nil {
 			fmt.Printf("Error fetching IRDI: %s\n", err)
@@ -88,8 +89,8 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 			fmt.Println("fetchcdd call successful")
 		}
 
-		if err := LoadData(filename); err != nil {
-			fmt.Printf("Error reloading %s: %s\n", filename, err)
+		if err := LoadData(FILENAME); err != nil {
+			fmt.Printf("Error reloading %s: %s\n", FILENAME, err)
 		}
 	}
 
@@ -108,7 +109,7 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 func getJsonByPath(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/concept-store/")
 
-	fullID := "http://localhost:3737/concept-store/" + id
+	fullID := URLBASE + PORT + "/concept-store/" + id
 
 	val, ok := Data[fullID]
 	if !ok {
@@ -177,7 +178,7 @@ func getXml(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	err := LoadData(filename)
+	err := LoadData(FILENAME)
 	if err != nil {
 		fmt.Printf("error reading files: %s\n", err)
 		os.Exit(1)
