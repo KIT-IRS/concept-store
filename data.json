@@ -2,7 +2,6 @@
   "paging_metadata": {},
   "result": [
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -15,7 +14,6 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "dataType": "REAL_MEASURE",
             "definition": [
               {
@@ -27,6 +25,7 @@
                 "text": "Temperatur des umgebenden Raumes, in dem das Bauteil das Leitungssystem oder die Anlage arbeitet"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -42,10 +41,10 @@
         }
       ],
       "id": "0173-1#02-AAZ842#002",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -58,7 +57,6 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "dataType": "REAL_MEASURE",
             "definition": [
               {
@@ -70,6 +68,7 @@
                 "text": "gemessene Umgebungsfeuchte"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -81,10 +80,10 @@
         }
       ],
       "id": "0173-1#02-ABC147#002",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -97,7 +96,6 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "dataType": "REAL_MEASURE",
             "definition": [
               {
@@ -109,6 +107,7 @@
                 "text": "Konzentration von CO2 in der Luft"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -120,10 +119,10 @@
         }
       ],
       "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -136,13 +135,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "feed-through terminal block for which each circuit can be disconnected"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -153,10 +152,10 @@
         }
       ],
       "id": "0112/2///62683#ACC703#001",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -169,13 +168,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "information about data communication interfaces"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -186,10 +185,10 @@
         }
       ],
       "id": "0112/2///63213#KEA022#001",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -202,13 +201,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "information about data communication interfaces of PQI"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -219,10 +218,10 @@
         }
       ],
       "id": "0112/2///63213#KEB122#001",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -235,13 +234,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "information about voltage measurement interfaces"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -252,10 +251,10 @@
         }
       ],
       "id": "0112/2///63213#KEA018#001",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -268,13 +267,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "all the conductive parts of the device which are intended to be included in a circuit other than the main circuit"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -285,10 +284,10 @@
         }
       ],
       "id": "0112/2///63508#KDA224#001",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -301,13 +300,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "information necessary for unambiguous identification of the device"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -318,10 +317,10 @@
         }
       ],
       "id": "0112/2///63508#KDF010#001",
-      "idShort": ""
+      "idShort": "",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -334,13 +333,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "switch-disconnector in which a fuse-link or a fuse-carrier with fuse-link forms the moving contact"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -352,10 +351,10 @@
         }
       ],
       "id": "0112/2///62683#ACC303#001",
-      "idShort": "Fuse-switch-disconnector"
+      "idShort": "Fuse-switch-disconnector",
+      "modelType": "ConceptDescription"
     },
     {
-      "modelType": "ConceptDescription",
       "embeddedDataSpecifications": [
         {
           "dataSpecification": {
@@ -368,13 +367,13 @@
             "type": "ExternalReference"
           },
           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
             "definition": [
               {
                 "language": "en",
                 "text": "substances which permit very less current flow through them"
               }
             ],
+            "modelType": "DataSpecificationIec61360",
             "preferredName": [
               {
                 "language": "en",
@@ -385,7 +384,41 @@
         }
       ],
       "id": "0112/2///61360_4#AAA231#001",
-      "idShort": "dielectric and insulating material"
+      "idShort": "dielectric and insulating material",
+      "modelType": "ConceptDescription"
+    },
+    {
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          "dataSpecificationContent": {
+            "definition": [
+              {
+                "language": "en",
+                "text": "electrical-based level switch that uses the dielectric properties of a process material to detect a level regime"
+              }
+            ],
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+              {
+                "language": "en",
+                "text": "Capacitance level switch"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "0112/2///61987#ABA706#002",
+      "idShort": "Capacitance level switch",
+      "modelType": "ConceptDescription"
     }
   ]
 }

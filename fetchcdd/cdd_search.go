@@ -8,14 +8,14 @@ import (
 	"regexp"
 	"strings"
 
+	aasjson "github.com/aas-core-works/aas-core3.0-golang/jsonization"
+	aastypes "github.com/aas-core-works/aas-core3.0-golang/types"
 	"golang.org/x/net/html"
 )
 
 const baseURL = "https://cdd.iec.ch/cdd/"
 const dataSpecURL = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
 const dataFilename = "data.json"
-
-// ---------- input / URL helpers ----------
 
 func cleanInput(irdi string) (string, error) {
 	irdi = strings.TrimSpace(irdi)
@@ -53,8 +53,6 @@ func buildURL(number, cleaned string) string {
 	return fmt.Sprintf("%s%s/%s.nsf/TU0/%s", baseURL, prefix, prefix, cleaned)
 }
 
-// ---------- HTTP + HTML (no saving) ----------
-
 func fetchEnglishSection(url string) (*html.Node, bool) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -79,7 +77,7 @@ func fetchEnglishSection(url string) (*html.Node, bool) {
 		return nil, false
 	}
 
-	target := findElementByID(doc, "onglet1") // English tab
+	target := findElementByID(doc, "onglet1")
 	if target == nil {
 		fmt.Println(" No English section found.")
 		return nil, false
@@ -108,8 +106,6 @@ func findElementByID(n *html.Node, id string) *html.Node {
 	return dfs(n)
 }
 
-// ---------- field extraction ----------
-
 func normalizeSpaces(s string) string {
 	s = strings.TrimSpace(s)
 	fields := strings.Fields(strings.ReplaceAll(s, "\u00A0", " "))
@@ -118,7 +114,7 @@ func normalizeSpaces(s string) string {
 
 func normalizeKey(s string) string {
 	s = normalizeSpaces(s)
-	s = strings.TrimSuffix(s, ":") // strip trailing colon used by CDD labels
+	s = strings.TrimSuffix(s, ":")
 	return strings.ToLower(s)
 }
 
@@ -127,7 +123,6 @@ func extractFields(n *html.Node) map[string]string {
 
 	var walk func(*html.Node)
 	walk = func(x *html.Node) {
-		// tables: TR with TH/TD
 		if x.Type == html.ElementNode && strings.EqualFold(x.Data, "tr") {
 			var cells []string
 			for c := x.FirstChild; c != nil; c = c.NextSibling {
@@ -140,7 +135,6 @@ func extractFields(n *html.Node) map[string]string {
 				fields[key] = cells[1]
 			}
 		}
-		// definition lists: DT → DD
 		if x.Type == html.ElementNode && strings.EqualFold(x.Data, "dt") {
 			key := normalizeKey(innerText(x))
 			if dd := nextElementSibling(x, "dd"); dd != nil {
@@ -180,64 +174,75 @@ func nextElementSibling(n *html.Node, tag string) *html.Node {
 	return nil
 }
 
-// ---------- AAS ConceptDescription ----------
-
-type LangString struct {
-	Language string `json:"language"`
-	Text     string `json:"text"`
-}
-
-type ValueReferencePair struct {
-	Value   string `json:"value"`
-	ValueId string `json:"valueId,omitempty"`
-}
-
-type DataSpecificationIec61360 struct {
-	ModelType     string               `json:"modelType"`
-	DataType      string               `json:"dataType,omitempty"`
-	Definition    []LangString         `json:"definition"`
-	PreferredName []LangString         `json:"preferredName"`
-	Unit          string               `json:"unit,omitempty"`
-	UnitId        string               `json:"unitId,omitempty"`
-	Symbol        string               `json:"symbol,omitempty"`
-	ValueList     []ValueReferencePair `json:"valueList,omitempty"`
-	LevelType     string               `json:"levelType,omitempty"`
-	SourceOfDef   string               `json:"sourceOfDefinition,omitempty"`
-	ValueFormat   string               `json:"valueFormat,omitempty"`
-}
-
-type Key struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
-
-type Reference struct {
-	Keys []Key  `json:"keys"`
-	Type string `json:"type"`
-}
-
-type EmbeddedDataSpecification struct {
-	DataSpecification        Reference                 `json:"dataSpecification"`
-	DataSpecificationContent DataSpecificationIec61360 `json:"dataSpecificationContent"`
-}
-
-type ConceptDescription struct {
-	ModelType                  string                      `json:"modelType"`
-	EmbeddedDataSpecifications []EmbeddedDataSpecification `json:"embeddedDataSpecifications"`
-	Id                         string                      `json:"id"`
-	IdShort                    string                      `json:"idShort"`
-}
-
-// ---------- data.json structure (paging_metadata + result) ----------
-
 type DataFile struct {
-	PagingMetadata map[string]any       `json:"paging_metadata"`
-	Result         []ConceptDescription `json:"result"`
+	PagingMetadata map[string]any                 `json:"paging_metadata"`
+	Result         []aastypes.IConceptDescription `json:"-"`
+	RawResult      []json.RawMessage              `json:"result,omitempty"`
 }
 
-// readDataFile returns an initialized DataFile (empty skeleton if file missing/empty)
+func marshalDataFile(df DataFile) ([]byte, error) {
+	df.RawResult = nil
+
+	for _, cd := range df.Result {
+		if cd == nil {
+			continue
+		}
+
+		jsonable, err := aasjson.ToJsonable(cd)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert ConceptDescription to jsonable: %w", err)
+		}
+
+		b, err := json.Marshal(jsonable)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal jsonable ConceptDescription: %w", err)
+		}
+
+		df.RawResult = append(df.RawResult, b)
+	}
+
+	return json.MarshalIndent(df, "", "  ")
+}
+
+func unmarshalDataFile(data []byte) (DataFile, error) {
+	var df DataFile
+
+	if err := json.Unmarshal(data, &df); err != nil {
+		return df, fmt.Errorf("failed to unmarshal data file wrapper: %w", err)
+	}
+
+	if df.PagingMetadata == nil {
+		df.PagingMetadata = map[string]any{}
+	}
+
+	df.Result = nil
+
+	for idx, raw := range df.RawResult {
+		if len(raw) == 0 {
+			continue
+		}
+
+		var jsonable any
+		if err := json.Unmarshal(raw, &jsonable); err != nil {
+			return df, fmt.Errorf("failed to unmarshal result[%d] raw JSON: %w", idx, err)
+		}
+
+		cd, err := aasjson.ConceptDescriptionFromJsonable(jsonable)
+		if err != nil {
+			return df, fmt.Errorf("failed to convert jsonable to ConceptDescription at index %d: %w", idx, err)
+		}
+
+		df.Result = append(df.Result, cd)
+	}
+
+	return df, nil
+}
+
 func readDataFile(filename string) (DataFile, error) {
-	df := DataFile{PagingMetadata: map[string]any{}, Result: []ConceptDescription{}}
+	df := DataFile{
+		PagingMetadata: map[string]any{},
+		Result:         []aastypes.IConceptDescription{},
+	}
 
 	b, err := os.ReadFile(filename)
 	if err != nil {
@@ -246,27 +251,31 @@ func readDataFile(filename string) (DataFile, error) {
 		}
 		return df, fmt.Errorf("failed to read %s: %w", filename, err)
 	}
+
 	trimmed := strings.TrimSpace(string(b))
 	if trimmed == "" {
 		return df, nil
 	}
-	if err := json.Unmarshal([]byte(trimmed), &df); err != nil {
+
+	parsed, err := unmarshalDataFile([]byte(trimmed))
+	if err != nil {
 		return df, fmt.Errorf("failed to parse %s: %w", filename, err)
 	}
-	// ensure non-nil fields
-	if df.PagingMetadata == nil {
-		df.PagingMetadata = map[string]any{}
+
+	if parsed.PagingMetadata == nil {
+		parsed.PagingMetadata = map[string]any{}
 	}
-	if df.Result == nil {
-		df.Result = []ConceptDescription{}
+	if parsed.Result == nil {
+		parsed.Result = []aastypes.IConceptDescription{}
 	}
-	return df, nil
+
+	return parsed, nil
 }
 
 func writeDataFileAtomic(filename string, df DataFile) error {
-	out, err := json.MarshalIndent(df, "", "  ")
+	out, err := marshalDataFile(df)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal data file: %w", err)
 	}
 	tmp := filename + ".tmp"
 	if err := os.WriteFile(tmp, out, 0o644); err != nil {
@@ -284,14 +293,14 @@ func idExistsInDataFile(id, filename string) (bool, error) {
 		return false, err
 	}
 	for _, item := range df.Result {
-		if item.Id == id {
+		if item.ID() == id {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func appendConceptDescriptionToDataFile(cd ConceptDescription, filename string) error {
+func appendConceptDescriptionToDataFile(cd aastypes.IConceptDescription, filename string) error {
 	df, err := readDataFile(filename)
 	if err != nil {
 		return err
@@ -300,9 +309,7 @@ func appendConceptDescriptionToDataFile(cd ConceptDescription, filename string) 
 	return writeDataFileAtomic(filename, df)
 }
 
-// ---------- strict mapping ----------
-
-func buildConceptDescriptionStrict(fields map[string]string, irdi string) (ConceptDescription, error) {
+func buildConceptDescriptionStrict(fields map[string]string, irdi string) (aastypes.IConceptDescription, error) {
 	labelMap := map[string][]string{
 		"preferredName": {"preferred name", "english name", "preferred name (en)"},
 		"shortName":     {"short name"},
@@ -331,93 +338,152 @@ func buildConceptDescriptionStrict(fields map[string]string, irdi string) (Conce
 		for k := range fields {
 			have = append(have, k)
 		}
-		return ConceptDescription{}, fmt.Errorf("missing required field: preferredName (available keys: %v)", have)
+		return nil, fmt.Errorf("missing required field: preferredName (available keys: %v)", have)
 	}
 	defn := get(labelMap["definition"])
 	if defn == "" {
-		return ConceptDescription{}, fmt.Errorf("missing required field: definition")
+		return nil, fmt.Errorf("missing required field: definition")
 	}
 
 	dtRaw := strings.TrimSpace(get(labelMap["dataType"]))
 	dt, err := mapDataTypeStrict(dtRaw)
 	if err != nil {
-		return ConceptDescription{}, err
+		return nil, err
 	}
 
-	ds := DataSpecificationIec61360{
-		ModelType:     "DataSpecificationIec61360",
-		DataType:      dt,
-		Definition:    []LangString{{Language: "en", Text: defn}},
-		PreferredName: []LangString{{Language: "en", Text: pref}},
-		Unit:          get(labelMap["unit"]),
-		UnitId:        get(labelMap["unitId"]),
-		Symbol:        get(labelMap["symbol"]),
-		LevelType:     get(labelMap["levelType"]),
-		SourceOfDef:   get(labelMap["sourceOfDef"]),
-		ValueFormat:   strings.TrimSpace(get(labelMap["valueFormat"])),
+	preferredName := []aastypes.ILangStringPreferredNameTypeIEC61360{
+		aastypes.NewLangStringPreferredNameTypeIEC61360("en", pref),
 	}
-	ds.ValueList = extractValues(fields)
-
-	eds := EmbeddedDataSpecification{
-		DataSpecification: Reference{
-			Keys: []Key{{Type: "GlobalReference", Value: dataSpecURL}},
-			Type: "ExternalReference",
-		},
-		DataSpecificationContent: ds,
+	definition := []aastypes.ILangStringDefinitionTypeIEC61360{
+		aastypes.NewLangStringDefinitionTypeIEC61360("en", defn),
 	}
 
-	cd := ConceptDescription{
-		ModelType:                  "ConceptDescription",
-		EmbeddedDataSpecifications: []EmbeddedDataSpecification{eds},
-		Id:                         irdi,
-		IdShort:                    pref,
+	valueList := extractValues(fields)
+
+	ds := aastypes.NewDataSpecificationIEC61360(preferredName)
+	if dt != nil {
+		ds.SetDataType(dt)
 	}
+	ds.SetDefinition(definition)
+
+	if u := get(labelMap["unit"]); u != "" {
+		ds.SetUnit(&u)
+	}
+	if s := get(labelMap["symbol"]); s != "" {
+		ds.SetSymbol(&s)
+	}
+	if vf := get(labelMap["valueFormat"]); vf != "" {
+		ds.SetValueFormat(&vf)
+	}
+	if src := get(labelMap["sourceOfDef"]); src != "" {
+		ds.SetSourceOfDefinition(&src)
+	}
+	if valueList != nil {
+		ds.SetValueList(valueList)
+	}
+
+	key := aastypes.NewKey(aastypes.KeyTypesGlobalReference, dataSpecURL)
+	ref := aastypes.NewReference(
+		aastypes.ReferenceTypesExternalReference,
+		[]aastypes.IKey{key},
+	)
+
+	eds := aastypes.NewEmbeddedDataSpecification(ref, ds)
+
+	cd := aastypes.NewConceptDescription(irdi)
+	cd.SetIDShort(&pref)
+	cd.SetEmbeddedDataSpecifications([]aastypes.IEmbeddedDataSpecification{eds})
+
 	return cd, nil
 }
 
-func mapDataTypeStrict(dt string) (string, error) {
-	if dt == "" {
-		return "", nil
+func mapDataTypeStrict(dtRaw string) (*aastypes.DataTypeIEC61360, error) {
+	if dtRaw == "" {
+		return nil, nil
 	}
-	allowed := map[string]struct{}{
-		"STRING":           {},
-		"BOOLEAN":          {},
-		"DATE":             {},
-		"TIME":             {},
-		"REAL_MEASURE":     {},
-		"INTEGER_MEASURE":  {},
-		"RATIONAL":         {},
-		"RATIONAL_MEASURE": {},
-		"COUNT":            {},
-		"BLOB":             {},
-		"FILE":             {},
-		"IRI":              {},
-		"IRDI":             {},
-		"LANGSTRING":       {},
-		"BOOLEAN_MEASURE":  {},
-		"TIME_OF_DAY":      {},
+	u := strings.ToUpper(strings.TrimSpace(dtRaw))
+
+	var v aastypes.DataTypeIEC61360
+
+	switch u {
+	case "STRING":
+		v = aastypes.DataTypeIEC61360String
+	case "STRING_TRANSLATABLE":
+		v = aastypes.DataTypeIEC61360StringTranslatable
+	case "BOOLEAN":
+		v = aastypes.DataTypeIEC61360Boolean
+	case "REAL_MEASURE":
+		v = aastypes.DataTypeIEC61360RealMeasure
+	case "REAL_COUNT":
+		v = aastypes.DataTypeIEC61360RealCount
+	case "REAL_CURRENCY":
+		v = aastypes.DataTypeIEC61360RealCurrency
+	case "INTEGER_MEASURE":
+		v = aastypes.DataTypeIEC61360IntegerMeasure
+	case "INTEGER_COUNT":
+		v = aastypes.DataTypeIEC61360IntegerCount
+	case "INTEGER_CURRENCY":
+		v = aastypes.DataTypeIEC61360IntegerCurrency
+	case "RATIONAL":
+		v = aastypes.DataTypeIEC61360Rational
+	case "RATIONAL_MEASURE":
+		v = aastypes.DataTypeIEC61360RationalMeasure
+	case "DATE":
+		v = aastypes.DataTypeIEC61360Date
+	case "TIME":
+		v = aastypes.DataTypeIEC61360Time
+	case "TIMESTAMP":
+		v = aastypes.DataTypeIEC61360Timestamp
+	case "IRI":
+		v = aastypes.DataTypeIEC61360IRI
+	case "IRDI":
+		v = aastypes.DataTypeIEC61360IRDI
+	case "FILE":
+		v = aastypes.DataTypeIEC61360File
+	case "BLOB":
+		v = aastypes.DataTypeIEC61360Blob
+	case "HTML":
+		v = aastypes.DataTypeIEC61360HTML
+	default:
+		return nil, fmt.Errorf("invalid IEC61360 data type: %q", dtRaw)
 	}
-	u := strings.ToUpper(dt)
-	if _, ok := allowed[u]; !ok {
-		return "", fmt.Errorf("invalid IEC61360 data type: %q (heuristics not allowed)", dt)
-	}
-	return u, nil
+
+	return &v, nil
 }
 
-func extractValues(fields map[string]string) []ValueReferencePair {
-	var pairs []ValueReferencePair
+func extractValues(fields map[string]string) aastypes.IValueList {
+	var pairs []aastypes.IValueReferencePair
+
 	for k, v := range fields {
-		if strings.Contains(k, "value list") || strings.Contains(k, "permitted values") || strings.Contains(k, "enumeration") {
+		if strings.Contains(k, "value list") ||
+			strings.Contains(k, "permitted values") ||
+			strings.Contains(k, "enumeration") {
+
 			for _, t := range splitList(v) {
 				if t == "" {
 					continue
 				}
 				val, id := splitValueAndIRDI(t)
-				pairs = append(pairs, ValueReferencePair{Value: val, ValueId: id})
+
+				var ref aastypes.IReference
+				if id != "" {
+					key := aastypes.NewKey(aastypes.KeyTypesGlobalReference, id)
+					ref = aastypes.NewReference(
+						aastypes.ReferenceTypesExternalReference,
+						[]aastypes.IKey{key},
+					)
+				}
+
+				vrp := aastypes.NewValueReferencePair(val, ref)
+				pairs = append(pairs, vrp)
 			}
 		}
 	}
-	return pairs
+
+	if len(pairs) == 0 {
+		return nil
+	}
+	return aastypes.NewValueList(pairs)
 }
 
 func splitList(s string) []string {
@@ -485,6 +551,6 @@ func GetIRDIfromCS(irdi string) error {
 		return fmt.Errorf("error updating %s: %v", dataFilename, err)
 	}
 
-	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", dataFilename, cd.Id)
+	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", dataFilename, cd.ID())
 	return nil
 }
