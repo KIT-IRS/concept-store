@@ -1,38 +1,139 @@
 # concept store
 
 ## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+This project is a small **HTTP server written in Go** that loads **ConceptDescriptions** (based on the [Asset Administration Shell (AAS) Standard 3.0](https://industrialdigitaltwin.org)) from a local JSON file, stores them in memory, and serves them through a simple REST API in **JSON** or **XML** format.  
+Additionally, it can dynamically fetch ConceptDescriptions from the external **CDD (Common Data Dictionary)** source.
+**!IDS HAVE TO BE FORMATTED TO URL-ENCODING!**
+
+---
+
+## Features
+
+- Loads ConceptDescriptions from a JSON file at startup  
+- Provides REST endpoints for JSON and XML output  
+- Can dynamically fetch ConceptDescriptions from IEC-CDD source 
+- Automatically reloads the local data file after a successful CDD fetch  
+- Built-in health check endpoint  
+- Graceful shutdown on interrupt (`Ctrl+C`)
+
+---
+
+## Project Structure
+
+```bash
+.
+├── main.go               # Main server implementation
+├── fetchcdd/             # Local package for CDD fetching logic
+│   ├── fetchcdd.go
+│   └── go.mod / go.sum   # Go module files
+├── data.json             # JSON data file with ConceptDescriptions
+├── main_page.html        # Static start page
+└── go.mod / go.sum       # Go module files
+
+```
 
 ## Visuals
 ![sequential function chart](./concept-store_sequential_function_chart.svg)
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## Requirements
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+- **Go version:** 1.20 or higher  
+- **Operating system:** Works on Linux, macOS, and Windows
+- **Internet connection:** Required for fetching ConceptDescriptions from   external IEC-CDD source
+- **Ports:**  
+  Default port is **3737** — ensure it’s not blocked by a firewall or used by another service.
+- **Dependencies:**  
+  The server automatically installs required Go modules using:
+  ```bash
+  go mod tidy
+    ```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Installation & Running
+```bash
+# Clone the repository
+git clone <https://gitlab.kit.edu/kit/irs/vsa/ideas/praktikum-michael-piontek/concept-store>
+cd <concept-store>
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+# Install dependencies
+go mod tidy
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+# Run the server
+go run main.go
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## API Endpoints
+### **Health Check**
+Checks if the server is running.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```http
+GET /health
+```
+#### **Response**
+```http
+OK
+```
+### **Root Page**
+Serves the static HTML page. 
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```http
+GET /
+```
+#### **Response**
+Returns the `main_page.html` file
 
-## License
-For open source projects, say how it is licensed.
+### **Query ConceptDescription (JSON)**
+Returns a ConceptDescription in **JSON** format based on its ID.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+```http
+GET /json?id=<ID>
+```
+#### **Query Parameter**
+`id` - The ID of the ConceptDescription (e.g. `0112/2///61360_4#AAG058#002`)
+#### **Example**
+```bash
+curl "http://localhost:3737/json?id=0112/2///61360_4#AAG058#002"
+```
+#### **Response**
+```json
+{
+  "id": "0112/2///61932#ABV",
+  "description": "..."
+}
+```
+### **Query ConceptDescription (XML)**
+Returns a ConceptDescription in **XML** format based on its ID.
+
+```http
+GET /xml?id=<ID>
+```
+#### **Query Parameter**
+`id` - The ID of the ConceptDescription (e.g. ` 0112/2///61360_4#AAG058#002`)
+#### **Example**
+```bash
+curl "http://localhost:3737/xml?id=0112/2///61360_4#AAG058#002"
+```
+#### **Response**
+```xml
+<aas:ConceptDescription>
+  ...
+</aas:ConceptDescription>
+```
+### **Direct Concept Store Access**
+Accesses ConceptDescriptions directly from the Concept Store path. Returns ConceptDescription in **JSON** format
+```http
+GET /concept-store/<ID>
+
+```
+#### **Example**
+```bash
+curl "http://localhost:3737/concept-store/0112/2///61360_4#AAG058#002"
+
+```
+#### **Response**
+```json
+{
+  "id": "0112/2///61932#ABV",
+  "description": "..."
+}
+```
