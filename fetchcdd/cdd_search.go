@@ -8,14 +8,15 @@ import (
 	"regexp"
 	"strings"
 
+	"golang.org/x/net/html"
+
 	aasjson "github.com/aas-core-works/aas-core3.0-golang/jsonization"
 	aastypes "github.com/aas-core-works/aas-core3.0-golang/types"
-	"golang.org/x/net/html"
 )
 
 const baseURL = "https://cdd.iec.ch/cdd/"
 const dataSpecURL = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
-const dataFilename = "data.json"
+const DataFilename = "data.json"
 
 func cleanInput(irdi string) (string, error) {
 	irdi = strings.TrimSpace(irdi)
@@ -238,7 +239,7 @@ func unmarshalDataFile(data []byte) (DataFile, error) {
 	return df, nil
 }
 
-func readDataFile(filename string) (DataFile, error) {
+func ReadDataFile(filename string) (DataFile, error) {
 	df := DataFile{
 		PagingMetadata: map[string]any{},
 		Result:         []aastypes.IConceptDescription{},
@@ -272,7 +273,7 @@ func readDataFile(filename string) (DataFile, error) {
 	return parsed, nil
 }
 
-func writeDataFileAtomic(filename string, df DataFile) error {
+func WriteDataFileAtomic(filename string, df DataFile) error {
 	out, err := marshalDataFile(df)
 	if err != nil {
 		return fmt.Errorf("failed to marshal data file: %w", err)
@@ -287,8 +288,8 @@ func writeDataFileAtomic(filename string, df DataFile) error {
 	return nil
 }
 
-func idExistsInDataFile(id, filename string) (bool, error) {
-	df, err := readDataFile(filename)
+func IdExistsInDataFile(id, filename string) (bool, error) {
+	df, err := ReadDataFile(filename)
 	if err != nil {
 		return false, err
 	}
@@ -301,12 +302,12 @@ func idExistsInDataFile(id, filename string) (bool, error) {
 }
 
 func appendConceptDescriptionToDataFile(cd aastypes.IConceptDescription, filename string) error {
-	df, err := readDataFile(filename)
+	df, err := ReadDataFile(filename)
 	if err != nil {
 		return err
 	}
 	df.Result = append(df.Result, cd)
-	return writeDataFileAtomic(filename, df)
+	return WriteDataFileAtomic(filename, df)
 }
 
 func buildConceptDescriptionStrict(fields map[string]string, irdi string) (aastypes.IConceptDescription, error) {
@@ -513,12 +514,12 @@ func GetIRDIfromCS(irdi string) error {
 	fmt.Printf("fetching IRDI %s:\n", irdi)
 	userInput := strings.TrimSpace(irdi)
 
-	exists, err := idExistsInDataFile(userInput, dataFilename)
+	exists, err := IdExistsInDataFile(userInput, DataFilename)
 	if err != nil {
-		return fmt.Errorf("error reading %s: %v", dataFilename, err)
+		return fmt.Errorf("error reading %s: %v", DataFilename, err)
 	}
 	if exists {
-		fmt.Printf("Entry with id %s already exists in %s — skipping.\n", userInput, dataFilename)
+		fmt.Printf("Entry with id %s already exists in %s — skipping.\n", userInput, DataFilename)
 		return nil
 	}
 
@@ -547,10 +548,10 @@ func GetIRDIfromCS(irdi string) error {
 		return fmt.Errorf("error building ConceptDescription: %v", err)
 	}
 
-	if err := appendConceptDescriptionToDataFile(cd, dataFilename); err != nil {
-		return fmt.Errorf("error updating %s: %v", dataFilename, err)
+	if err := appendConceptDescriptionToDataFile(cd, DataFilename); err != nil {
+		return fmt.Errorf("error updating %s: %v", DataFilename, err)
 	}
 
-	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", dataFilename, cd.ID())
+	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", DataFilename, cd.ID())
 	return nil
 }

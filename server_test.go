@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fetchcdd"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,18 +17,6 @@ import (
 type DataFile struct {
 	PagingMetadata map[string]any                 `json:"paging_metadata"`
 	Result         []aastypes.IConceptDescription `json:"result"`
-}
-
-func toJsonables(data map[string]aastypes.IConceptDescription) ([]interface{}, error) {
-	var list []interface{}
-	for _, cd := range data {
-		j, err := aasjsonization.ToJsonable(cd)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, j)
-	}
-	return list, nil
 }
 
 // make a test http server
@@ -314,4 +303,55 @@ func TestGetJsonByPath(t *testing.T) {
 			t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, http.StatusMethodNotAllowed)
 		}
 	})
+}
+func TestFetchcdd(t *testing.T) {
+	irdi := "0112/2///61360_4#AAA398#001"
+
+	tmpDir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Chdir failed: %v", err)
+	}
+	defer os.Chdir(cwd)
+
+	if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
+		t.Fatalf("GetIRDIfromCS returned error: %v", err)
+	}
+
+	exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
+	if err != nil {
+		t.Fatalf("idExistsInDataFile failed: %v", err)
+	}
+	if !exists {
+		t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, fetchcdd.DataFilename)
+	}
+
+	df, err := fetchcdd.ReadDataFile(fetchcdd.DataFilename)
+	if err != nil {
+		t.Fatalf("readDataFile failed: %v", err)
+	}
+
+	var cleaned []aastypes.IConceptDescription
+	for _, cd := range df.Result {
+		if cd.ID() == irdi {
+			continue
+		}
+		cleaned = append(cleaned, cd)
+	}
+	df.Result = cleaned
+
+	if err := fetchcdd.WriteDataFileAtomic(fetchcdd.DataFilename, df); err != nil {
+		t.Fatalf("writeDataFileAtomic failed during cleanup: %v", err)
+	}
+
+	exists, err = fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
+	if err != nil {
+		t.Fatalf("idExistsInDataFile failed after cleanup: %v", err)
+	}
+	if exists {
+		t.Fatalf("expected id %s to be removed from %s after cleanup", irdi, fetchcdd.DataFilename)
+	}
 }
