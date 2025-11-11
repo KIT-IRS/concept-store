@@ -18,6 +18,7 @@ import (
 	aasxmlization "github.com/aas-core-works/aas-core3.0-golang/xmlization"
 )
 
+const filename = fetchcdd.DataFilename
 const PORT = "3737"
 
 var Data = map[string]aastypes.IConceptDescription{}
@@ -87,8 +88,8 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 			fmt.Println("fetchcdd call successful")
 		}
 
-		if err := LoadData("data.json"); err != nil {
-			fmt.Printf("Error reloading data.json: %s\n", err)
+		if err := LoadData(filename); err != nil {
+			fmt.Printf("Error reloading %s: %s\n", filename, err)
 		}
 	}
 
@@ -176,7 +177,7 @@ func getXml(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	err := LoadData("data.json")
+	err := LoadData(filename)
 	if err != nil {
 		fmt.Printf("error reading files: %s\n", err)
 		os.Exit(1)

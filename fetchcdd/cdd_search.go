@@ -510,6 +510,7 @@ func splitValueAndIRDI(s string) (val, id string) {
 	return strings.TrimSpace(s), ""
 }
 
+// main function
 func GetIRDIfromCS(irdi string) error {
 	fmt.Printf("fetching IRDI %s:\n", irdi)
 	userInput := strings.TrimSpace(irdi)
