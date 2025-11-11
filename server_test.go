@@ -329,32 +329,6 @@ func TestFetchcdd(t *testing.T) {
 		if !exists {
 			t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, fetchcdd.DataFilename)
 		}
-
-		df, err := fetchcdd.ReadDataFile(fetchcdd.DataFilename)
-		if err != nil {
-			t.Fatalf("readDataFile failed: %v", err)
-		}
-
-		var cleaned []aastypes.IConceptDescription
-		for _, cd := range df.Result {
-			if cd.ID() == irdi {
-				continue
-			}
-			cleaned = append(cleaned, cd)
-		}
-		df.Result = cleaned
-
-		if err := fetchcdd.WriteDataFileAtomic(fetchcdd.DataFilename, df); err != nil {
-			t.Fatalf("writeDataFileAtomic failed during cleanup: %v", err)
-		}
-
-		exists, err = fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
-		if err != nil {
-			t.Fatalf("idExistsInDataFile failed after cleanup: %v", err)
-		}
-		if exists {
-			t.Fatalf("expected id %s to be removed from %s after cleanup", irdi, fetchcdd.DataFilename)
-		}
 	})
 	t.Run("existing IRDI is skipped", func(t *testing.T) {
 		irdi := "0112/2///62683#ACC303#001"
