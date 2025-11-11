@@ -305,53 +305,97 @@ func TestGetJsonByPath(t *testing.T) {
 	})
 }
 func TestFetchcdd(t *testing.T) {
-	irdi := "0112/2///61360_4#AAA398#001"
+	t.Run("new IRDI", func(t *testing.T) {
+		irdi := "0112/2///61360_4#AAA398#001"
 
-	tmpDir := t.TempDir()
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Getwd failed: %v", err)
-	}
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("Chdir failed: %v", err)
-	}
-	defer os.Chdir(cwd)
-
-	if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
-		t.Fatalf("GetIRDIfromCS returned error: %v", err)
-	}
-
-	exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
-	if err != nil {
-		t.Fatalf("idExistsInDataFile failed: %v", err)
-	}
-	if !exists {
-		t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, fetchcdd.DataFilename)
-	}
-
-	df, err := fetchcdd.ReadDataFile(fetchcdd.DataFilename)
-	if err != nil {
-		t.Fatalf("readDataFile failed: %v", err)
-	}
-
-	var cleaned []aastypes.IConceptDescription
-	for _, cd := range df.Result {
-		if cd.ID() == irdi {
-			continue
+		tmpDir := t.TempDir()
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd failed: %v", err)
 		}
-		cleaned = append(cleaned, cd)
-	}
-	df.Result = cleaned
+		if err := os.Chdir(tmpDir); err != nil {
+			t.Fatalf("Chdir failed: %v", err)
+		}
+		defer os.Chdir(cwd)
 
-	if err := fetchcdd.WriteDataFileAtomic(fetchcdd.DataFilename, df); err != nil {
-		t.Fatalf("writeDataFileAtomic failed during cleanup: %v", err)
-	}
+		if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
+			t.Fatalf("GetIRDIfromCS returned error: %v", err)
+		}
 
-	exists, err = fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
-	if err != nil {
-		t.Fatalf("idExistsInDataFile failed after cleanup: %v", err)
-	}
-	if exists {
-		t.Fatalf("expected id %s to be removed from %s after cleanup", irdi, fetchcdd.DataFilename)
-	}
+		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
+		if err != nil {
+			t.Fatalf("idExistsInDataFile failed: %v", err)
+		}
+		if !exists {
+			t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, fetchcdd.DataFilename)
+		}
+
+		df, err := fetchcdd.ReadDataFile(fetchcdd.DataFilename)
+		if err != nil {
+			t.Fatalf("readDataFile failed: %v", err)
+		}
+
+		var cleaned []aastypes.IConceptDescription
+		for _, cd := range df.Result {
+			if cd.ID() == irdi {
+				continue
+			}
+			cleaned = append(cleaned, cd)
+		}
+		df.Result = cleaned
+
+		if err := fetchcdd.WriteDataFileAtomic(fetchcdd.DataFilename, df); err != nil {
+			t.Fatalf("writeDataFileAtomic failed during cleanup: %v", err)
+		}
+
+		exists, err = fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
+		if err != nil {
+			t.Fatalf("idExistsInDataFile failed after cleanup: %v", err)
+		}
+		if exists {
+			t.Fatalf("expected id %s to be removed from %s after cleanup", irdi, fetchcdd.DataFilename)
+		}
+	})
+	t.Run("existing IRDI is skipped", func(t *testing.T) {
+		irdi := "0112/2///62683#ACC303#001"
+
+		tmpDir := t.TempDir()
+		cwd, _ := os.Getwd()
+		os.Chdir(tmpDir)
+		defer os.Chdir(cwd)
+
+		// fetches new IRDI
+		if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
+			t.Fatalf("first GetIRDIfromCS returned error: %v", err)
+		}
+
+		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
+		if err != nil {
+			t.Fatalf("idExistsInDataFile failed: %v", err)
+		}
+		if !exists {
+			t.Fatalf("expected id %s to exist after first call", irdi)
+		}
+
+		// fetches same IRDI again -> tests if skipped
+		if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
+			t.Fatalf("second GetIRDIfromCS returned error: %v", err)
+		}
+
+		df, err := fetchcdd.ReadDataFile(fetchcdd.DataFilename)
+		if err != nil {
+			t.Fatalf("ReadDataFile failed: %v", err)
+		}
+
+		count := 0
+		for _, cd := range df.Result {
+			if cd.ID() == irdi {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatalf("expected exactly 1 ConceptDescription with ID %s, got %d", irdi, count)
+		}
+	})
+
 }
