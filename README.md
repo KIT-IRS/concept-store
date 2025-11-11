@@ -4,7 +4,6 @@
 
 This project is a small **HTTP server written in Go** that loads **ConceptDescriptions** (based on the [Asset Administration Shell (AAS) Standard 3.0](https://industrialdigitaltwin.org)) from a local JSON file, stores them in memory, and serves them through a simple REST API in **JSON** or **XML** format.  
 Additionally, it can dynamically fetch ConceptDescriptions from the external **CDD (Common Data Dictionary)** source.
-**!IDS HAVE TO BE FORMATTED TO URL-ENCODING!**
 
 ---
 
@@ -74,7 +73,8 @@ GET /health
 OK
 ```
 ### **Root Page**
-Serves the static HTML page. 
+The main page provides a text input field where users can enter ConceptDescription IDs.
+It automatically formats the entered IDs into the correct URL structure and, based on the selected option, retrieves the corresponding data in either **JSON** or **XML** format.
 
 ```http
 GET /
@@ -89,10 +89,10 @@ Returns a ConceptDescription in **JSON** format based on its ID.
 GET /json?id=<ID>
 ```
 #### **Query Parameter**
-`id` - The ID of the ConceptDescription (e.g. `0112/2///61360_4#AAG058#002`)
+`id` - The ID of the ConceptDescription in URL formating (e.g. `0112/2///62683#ACC303#001` -> `0112%2F2%2F%2F%2F62683%23ACC303%23001`)
 #### **Example**
 ```bash
-curl "http://localhost:3737/json?id=0112/2///61360_4#AAG058#002"
+curl "http://localhost:3737/json?id=0112%2F2%2F%2F%2F62683%23ACC303%23001"
 ```
 #### **Response**
 ```json
@@ -108,10 +108,10 @@ Returns a ConceptDescription in **XML** format based on its ID.
 GET /xml?id=<ID>
 ```
 #### **Query Parameter**
-`id` - The ID of the ConceptDescription (e.g. ` 0112/2///61360_4#AAG058#002`)
+`id` - The ID of the ConceptDescription in URL formating (e.g. `0112/2///62683#ACC303#001` -> `0112%2F2%2F%2F%2F62683%23ACC303%23001`)
 #### **Example**
 ```bash
-curl "http://localhost:3737/xml?id=0112/2///61360_4#AAG058#002"
+curl "http://localhost:3737/xml?id=0112%2F2%2F%2F%2F62683%23ACC303%23001"
 ```
 #### **Response**
 ```xml
@@ -127,13 +127,13 @@ GET /concept-store/<ID>
 ```
 #### **Example**
 ```bash
-curl "http://localhost:3737/concept-store/0112/2///61360_4#AAG058#002"
+curl "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration"
 
 ```
 #### **Response**
 ```json
 {
-  "id": "0112/2///61932#ABV",
+  "id": "http://localhost:3737/concept-store/ConceptDescription/unit/co2concentration",
   "description": "..."
 }
 ```
