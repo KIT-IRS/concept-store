@@ -18,10 +18,10 @@ import (
 	aasxmlization "github.com/aas-core-works/aas-core3.0-golang/xmlization"
 )
 
-const FILENAME = fetchcdd.DataFilename
+const FILENAME = fetchcdd.DATAFILE_NAME
 const MAINPAGE = "main_page.html"
 const PORT = "3737"
-const URLBASE = "http://localhost:"
+const URL_BASE_CS = "http://localhost:"
 
 var Data = map[string]aastypes.IConceptDescription{}
 
@@ -109,7 +109,7 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 func getJsonByPath(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/concept-store/")
 
-	fullID := URLBASE + PORT + "/concept-store/" + id
+	fullID := URL_BASE_CS + PORT + "/concept-store/" + id
 
 	val, ok := Data[fullID]
 	if !ok {

@@ -14,9 +14,9 @@ import (
 	aastypes "github.com/aas-core-works/aas-core3.0-golang/types"
 )
 
-const baseURL = "https://cdd.iec.ch/cdd/"
-const dataSpecURL = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
-const DataFilename = "data.json"
+const BASEURL_CDD = "https://cdd.iec.ch/cdd/"
+const DATA_SPECIFICATION_URL = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
+const DATAFILE_NAME = "data.json"
 
 func cleanInput(irdi string) (string, error) {
 	irdi = strings.TrimSpace(irdi)
@@ -40,18 +40,18 @@ func extractNumber(irdi string) (string, bool) {
 
 func buildURL(number, cleaned string) string {
 	if strings.EqualFold(number, "ICS") {
-		return fmt.Sprintf("%sisoics/isoics.nsf/TU0/%s", baseURL, cleaned)
+		return fmt.Sprintf("%sisoics/isoics.nsf/TU0/%s", BASEURL_CDD, cleaned)
 	}
 	if number == "63213" {
-		return fmt.Sprintf("%siectc85/iec63213.nsf/TU0/%s", baseURL, cleaned)
+		return fmt.Sprintf("%siectc85/iec63213.nsf/TU0/%s", BASEURL_CDD, cleaned)
 	}
 	if strings.Contains(number, "_") {
 		cleanedNumber := regexp.MustCompile(`_\d`).ReplaceAllString(number, "")
 		prefix := "iec" + strings.ReplaceAll(cleanedNumber, "_", "")
-		return fmt.Sprintf("%s%s/%s.nsf/TU0/%s", baseURL, prefix, prefix, cleaned)
+		return fmt.Sprintf("%s%s/%s.nsf/TU0/%s", BASEURL_CDD, prefix, prefix, cleaned)
 	}
 	prefix := "iec" + number
-	return fmt.Sprintf("%s%s/%s.nsf/TU0/%s", baseURL, prefix, prefix, cleaned)
+	return fmt.Sprintf("%s%s/%s.nsf/TU0/%s", BASEURL_CDD, prefix, prefix, cleaned)
 }
 
 func fetchEnglishSection(url string) (*html.Node, bool) {
@@ -383,7 +383,7 @@ func buildConceptDescriptionStrict(fields map[string]string, irdi string) (aasty
 		ds.SetValueList(valueList)
 	}
 
-	key := aastypes.NewKey(aastypes.KeyTypesGlobalReference, dataSpecURL)
+	key := aastypes.NewKey(aastypes.KeyTypesGlobalReference, DATA_SPECIFICATION_URL)
 	ref := aastypes.NewReference(
 		aastypes.ReferenceTypesExternalReference,
 		[]aastypes.IKey{key},
@@ -515,12 +515,12 @@ func GetIRDIfromCS(irdi string) error {
 	fmt.Printf("fetching IRDI %s:\n", irdi)
 	userInput := strings.TrimSpace(irdi)
 
-	exists, err := IdExistsInDataFile(userInput, DataFilename)
+	exists, err := IdExistsInDataFile(userInput, DATAFILE_NAME)
 	if err != nil {
-		return fmt.Errorf("error reading %s: %v", DataFilename, err)
+		return fmt.Errorf("error reading %s: %v", DATAFILE_NAME, err)
 	}
 	if exists {
-		fmt.Printf("Entry with id %s already exists in %s — skipping.\n", userInput, DataFilename)
+		fmt.Printf("Entry with id %s already exists in %s — skipping.\n", userInput, DATAFILE_NAME)
 		return nil
 	}
 
@@ -549,10 +549,10 @@ func GetIRDIfromCS(irdi string) error {
 		return fmt.Errorf("error building ConceptDescription: %v", err)
 	}
 
-	if err := appendConceptDescriptionToDataFile(cd, DataFilename); err != nil {
-		return fmt.Errorf("error updating %s: %v", DataFilename, err)
+	if err := appendConceptDescriptionToDataFile(cd, DATAFILE_NAME); err != nil {
+		return fmt.Errorf("error updating %s: %v", DATAFILE_NAME, err)
 	}
 
-	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", DataFilename, cd.ID())
+	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", DATAFILE_NAME, cd.ID())
 	return nil
 }

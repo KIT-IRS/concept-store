@@ -322,12 +322,12 @@ func TestFetchcdd(t *testing.T) {
 			t.Fatalf("GetIRDIfromCS returned error: %v", err)
 		}
 
-		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
+		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DATAFILE_NAME)
 		if err != nil {
 			t.Fatalf("idExistsInDataFile failed: %v", err)
 		}
 		if !exists {
-			t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, fetchcdd.DataFilename)
+			t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, fetchcdd.DATAFILE_NAME)
 		}
 	})
 	t.Run("existing IRDI is skipped", func(t *testing.T) {
@@ -343,7 +343,7 @@ func TestFetchcdd(t *testing.T) {
 			t.Fatalf("first GetIRDIfromCS returned error: %v", err)
 		}
 
-		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DataFilename)
+		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DATAFILE_NAME)
 		if err != nil {
 			t.Fatalf("idExistsInDataFile failed: %v", err)
 		}
@@ -356,7 +356,7 @@ func TestFetchcdd(t *testing.T) {
 			t.Fatalf("second GetIRDIfromCS returned error: %v", err)
 		}
 
-		df, err := fetchcdd.ReadDataFile(fetchcdd.DataFilename)
+		df, err := fetchcdd.ReadDataFile(fetchcdd.DATAFILE_NAME)
 		if err != nil {
 			t.Fatalf("ReadDataFile failed: %v", err)
 		}
