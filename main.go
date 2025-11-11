@@ -53,7 +53,7 @@ func LoadData(FILENAME string) error {
 		Data[cd.ID()] = cd
 	}
 
-	fmt.Printf("Loaded %d ConceptDescriptions\n", len(Data))
+	fmt.Printf("Loaded %d ConceptDescriptions \n", len(Data))
 	for id := range Data {
 		fmt.Println("Available ID:", id)
 	}
@@ -72,8 +72,6 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, error) {
-	fmt.Println("getAnswer called")
-
 	id := strings.TrimSpace(r.URL.Query().Get("id"))
 	fmt.Println("Requested ID:", id)
 
@@ -84,7 +82,7 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 	if strings.HasPrefix(id, "0112/") {
 		err := fetchcdd.GetIRDIfromCS(id)
 		if err != nil {
-			fmt.Printf("Error fetching IRDI: %s\n", err)
+			fmt.Printf("error fetching IRDI: %s\n", err)
 		} else {
 			fmt.Println("fetchcdd call successful")
 		}
@@ -117,7 +115,7 @@ func getJsonByPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -142,7 +140,7 @@ func getJson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -206,12 +204,12 @@ func main() {
 	go func() {
 		fmt.Printf("server address: http://localhost:%s\n", PORT)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("Server error: %s\n", err)
+			fmt.Printf("server error: %s\n", err)
 		}
 	}()
 
 	<-stop
-	fmt.Println("\nShutdown initiated...")
+	fmt.Println("\n shutdown initiated...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

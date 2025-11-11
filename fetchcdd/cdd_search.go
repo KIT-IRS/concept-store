@@ -58,29 +58,29 @@ func fetchEnglishSection(url string) (*html.Node, bool) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Printf(" Error creating request: %v\n", err)
+		fmt.Printf("Error creating request: %v\n", err)
 		return nil, false
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf(" Error fetching URL: %v\n", err)
+		fmt.Printf("Error fetching URL: %v\n", err)
 		return nil, false
 	}
 	defer resp.Body.Close()
 
-	fmt.Printf(" HTTP status code: %d\n", resp.StatusCode)
+	fmt.Printf("HTTP status code: %d\n", resp.StatusCode)
 
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
-		fmt.Printf(" Error parsing HTML: %v\n", err)
+		fmt.Printf("Error parsing HTML: %v\n", err)
 		return nil, false
 	}
 
 	target := findElementByID(doc, "onglet1")
 	if target == nil {
-		fmt.Println(" No English section found.")
+		fmt.Println("No English section found.")
 		return nil, false
 	}
 
