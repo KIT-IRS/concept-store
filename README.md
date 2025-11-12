@@ -65,18 +65,18 @@ go run main.go
 ### **Health Check**
 Checks if the server is running.
 
-```http
+```
 GET /health
 ```
 #### **Response**
-```http
+```
 OK
 ```
 ### **Root Page**
 The main page provides a text input field where users can enter ConceptDescription IDs.
 It automatically formats the entered IDs into the correct URL structure and, based on the selected option, retrieves the corresponding data in either **JSON** or **XML** format.
 
-```http
+```
 GET /
 ```
 #### **Response**
@@ -85,7 +85,7 @@ Returns the `main_page.html` file
 ### **Query ConceptDescription (JSON)**
 Returns a ConceptDescription in **JSON** format based on its ID.
 
-```http
+```
 GET /json?id=<ID>
 ```
 #### **Query Parameter**
@@ -104,7 +104,7 @@ curl "http://localhost:3737/json?id=0112%2F2%2F%2F%2F62683%23ACC303%23001"
 ### **Query ConceptDescription (XML)**
 Returns a ConceptDescription in **XML** format based on its ID.
 
-```http
+```
 GET /xml?id=<ID>
 ```
 #### **Query Parameter**
@@ -115,13 +115,13 @@ curl "http://localhost:3737/xml?id=0112%2F2%2F%2F%2F62683%23ACC303%23001"
 ```
 #### **Response**
 ```xml
-<aas:ConceptDescription>
+<conceptDescription>
   ...
-</aas:ConceptDescription>
+</conceptDescription>
 ```
 ### **Direct Concept Store Access**
 Accesses ConceptDescriptions directly from the Concept Store path. Returns ConceptDescription in **JSON** format
-```http
+```
 GET /concept-store/<ID>
 
 ```
