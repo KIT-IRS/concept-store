@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -309,54 +310,46 @@ func TestFetchcdd(t *testing.T) {
 		irdi := "0112/2///61360_4#AAA398#001"
 
 		tmpDir := t.TempDir()
-		cwd, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("Getwd failed: %v", err)
-		}
-		if err := os.Chdir(tmpDir); err != nil {
-			t.Fatalf("Chdir failed: %v", err)
-		}
-		defer os.Chdir(cwd)
+		dataFile := filepath.Join(tmpDir, fetchcdd.DATAFILE_NAME)
 
-		if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
+		if err := fetchcdd.GetIRDIfromCS(irdi, dataFile); err != nil {
 			t.Fatalf("GetIRDIfromCS returned error: %v", err)
 		}
 
-		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DATAFILE_NAME)
+		exists, err := fetchcdd.IdExistsInDataFile(irdi, dataFile)
 		if err != nil {
-			t.Fatalf("idExistsInDataFile failed: %v", err)
+			t.Fatalf("IdExistsInDataFile failed: %v", err)
 		}
 		if !exists {
-			t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, fetchcdd.DATAFILE_NAME)
+			t.Fatalf("expected id %s to exist in %s after GetIRDIfromCS", irdi, dataFile)
 		}
 	})
+
 	t.Run("existing IRDI is skipped", func(t *testing.T) {
 		irdi := "0112/2///62683#ACC303#001"
 
 		tmpDir := t.TempDir()
-		cwd, _ := os.Getwd()
-		os.Chdir(tmpDir)
-		defer os.Chdir(cwd)
+		dataFile := filepath.Join(tmpDir, fetchcdd.DATAFILE_NAME)
 
-		// fetches new IRDI
-		if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
+		// first fetch -> get new IRDI
+		if err := fetchcdd.GetIRDIfromCS(irdi, dataFile); err != nil {
 			t.Fatalf("first GetIRDIfromCS returned error: %v", err)
 		}
 
-		exists, err := fetchcdd.IdExistsInDataFile(irdi, fetchcdd.DATAFILE_NAME)
+		exists, err := fetchcdd.IdExistsInDataFile(irdi, dataFile)
 		if err != nil {
-			t.Fatalf("idExistsInDataFile failed: %v", err)
+			t.Fatalf("IdExistsInDataFile failed: %v", err)
 		}
 		if !exists {
 			t.Fatalf("expected id %s to exist after first call", irdi)
 		}
 
-		// fetches same IRDI again -> tests if skipped
-		if err := fetchcdd.GetIRDIfromCS(irdi); err != nil {
+		// second fetch -> should skip
+		if err := fetchcdd.GetIRDIfromCS(irdi, dataFile); err != nil {
 			t.Fatalf("second GetIRDIfromCS returned error: %v", err)
 		}
 
-		df, err := fetchcdd.ReadDataFile(fetchcdd.DATAFILE_NAME)
+		df, err := fetchcdd.ReadDataFile(dataFile)
 		if err != nil {
 			t.Fatalf("ReadDataFile failed: %v", err)
 		}
@@ -371,5 +364,4 @@ func TestFetchcdd(t *testing.T) {
 			t.Fatalf("expected exactly 1 ConceptDescription with ID %s, got %d", irdi, count)
 		}
 	})
-
 }

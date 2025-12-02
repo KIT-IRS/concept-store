@@ -16,8 +16,9 @@ import (
 
 const BASEURL_CDD = "https://cdd.iec.ch/cdd/"
 const DATA_SPECIFICATION_URL = "http://admin-shell.io/DataSpecificationTemplates/DataSpecificationIEC61360/3/0"
-const DATAFILE_NAME = "data.json"
+const DATAFILE_NAME = "concept-descriptions-database.json"
 
+// concept-descriptions-database.json
 func cleanInput(irdi string) (string, error) {
 	irdi = strings.TrimSpace(irdi)
 	if len(irdi) < 4 {
@@ -511,16 +512,21 @@ func splitValueAndIRDI(s string) (val, id string) {
 }
 
 // main function
-func GetIRDIfromCS(irdi string) error {
+func GetIRDIfromCS(irdi string, filename string) error {
+	// default: concept-store directory
+	if strings.TrimSpace(filename) == "" {
+		filename = DATAFILE_NAME
+	}
+
 	fmt.Printf("fetching IRDI %s:\n", irdi)
 	userInput := strings.TrimSpace(irdi)
 
-	exists, err := IdExistsInDataFile(userInput, DATAFILE_NAME)
+	exists, err := IdExistsInDataFile(userInput, filename)
 	if err != nil {
-		return fmt.Errorf("error reading %s: %v", DATAFILE_NAME, err)
+		return fmt.Errorf("error reading %s: %v", filename, err)
 	}
 	if exists {
-		fmt.Printf("Entry with id %s already exists in %s — skipping.\n", userInput, DATAFILE_NAME)
+		fmt.Printf("Entry with id %s already exists in %s — skipping.\n", userInput, filename)
 		return nil
 	}
 
@@ -549,10 +555,10 @@ func GetIRDIfromCS(irdi string) error {
 		return fmt.Errorf("error building ConceptDescription: %v", err)
 	}
 
-	if err := appendConceptDescriptionToDataFile(cd, DATAFILE_NAME); err != nil {
-		return fmt.Errorf("error updating %s: %v", DATAFILE_NAME, err)
+	if err := appendConceptDescriptionToDataFile(cd, filename); err != nil {
+		return fmt.Errorf("error updating %s: %v", filename, err)
 	}
 
-	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", DATAFILE_NAME, cd.ID())
+	fmt.Printf("Appended ConceptDescription to %s (id: %s)\n", filename, cd.ID())
 	return nil
 }

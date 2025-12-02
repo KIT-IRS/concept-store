@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,15 +19,29 @@ import (
 	aasxmlization "github.com/aas-core-works/aas-core3.0-golang/xmlization"
 )
 
-const FILENAME = fetchcdd.DATAFILE_NAME
 const MAINPAGE = "main_page.html"
-const PORT = "3737"
-const URL_BASE_CS = "http://localhost:"
+const defaultPort = "3737"
+const defaultBaseURL = "http://localhost:3737"
+const defaultDataDir = "./"
 
 var Data = map[string]aastypes.IConceptDescription{}
 
-func LoadData(FILENAME string) error {
-	file, err := os.Open(FILENAME)
+var (
+	Port         = getEnv("PORT", defaultPort)
+	BaseURL      = getEnv("BASE_URL", defaultBaseURL)
+	DataDir      = getEnv("DATA_DIR", defaultDataDir)
+	DataFilePath = filepath.Join(DataDir, fetchcdd.DATAFILE_NAME)
+)
+
+func getEnv(key, def string) string {
+	if v, ok := os.LookupEnv(key); ok && v != "" {
+		return v
+	}
+	return def
+}
+
+func LoadData(filename string) error {
+	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -39,7 +54,7 @@ func LoadData(FILENAME string) error {
 		return fmt.Errorf("error decoding json: %w", err)
 	}
 
-	resultRaw, ok := raw["result"].([]interface{})
+	resultRaw, ok := raw["result"].([]any)
 	if !ok {
 		return fmt.Errorf("missing or invalid 'result' field")
 	}
@@ -80,15 +95,15 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 	}
 
 	if strings.HasPrefix(id, "0112/") {
-		err := fetchcdd.GetIRDIfromCS(id)
+		err := fetchcdd.GetIRDIfromCS(id, DataFilePath)
 		if err != nil {
 			fmt.Printf("error fetching IRDI: %s\n", err)
 		} else {
 			fmt.Println("fetchcdd call successful")
 		}
 
-		if err := LoadData(FILENAME); err != nil {
-			fmt.Printf("Error reloading %s: %s\n", FILENAME, err)
+		if err := LoadData(DataFilePath); err != nil {
+			fmt.Printf("Error reloading %s: %s\n", DataFilePath, err)
 		}
 	}
 
@@ -107,7 +122,8 @@ func getAnswer(r *http.Request) (string, aastypes.IConceptDescription, int, erro
 func getJsonByPath(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/concept-store/")
 
-	fullID := URL_BASE_CS + PORT + "/concept-store/" + id
+	base := strings.TrimSuffix(BaseURL, "/")
+	fullID := base + "/concept-store/" + id
 
 	val, ok := Data[fullID]
 	if !ok {
@@ -176,7 +192,21 @@ func getXml(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	err := LoadData(FILENAME)
+	if _, err := os.Stat(DataFilePath); os.IsNotExist(err) {
+		fmt.Println("database file not found -> creating new one")
+
+		initial := map[string]any{
+			"paging_metadata": map[string]any{},
+			"result":          []any{},
+		}
+
+		b, _ := json.MarshalIndent(initial, "", "  ")
+		if err := os.WriteFile(DataFilePath, b, 0o644); err != nil {
+			fmt.Printf("failed to create database file: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	err := LoadData(DataFilePath)
 	if err != nil {
 		fmt.Printf("error reading files: %s\n", err)
 		os.Exit(1)
@@ -190,7 +220,7 @@ func main() {
 	mux.HandleFunc("/concept-store/", getJsonByPath)
 
 	server := &http.Server{
-		Addr:           ":" + PORT,
+		Addr:           ":" + Port,
 		Handler:        mux,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -202,7 +232,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 
 	go func() {
-		fmt.Printf("server address: http://localhost:%s\n", PORT)
+		fmt.Printf("server listening on :%s (BaseURL=%s)\n", Port, BaseURL)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("server error: %s\n", err)
 		}
