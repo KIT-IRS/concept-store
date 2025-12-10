@@ -37,7 +37,7 @@ Additionally, it can dynamically fetch ConceptDescriptions from the external **C
 
 ## Requirements
 
-- **Go version:** 1.20 or higher  
+- **Go version:** 1.25.4 or higher  
 - **Operating system:** Works on Linux, macOS, and Windows
 - **Internet connection:** Required for fetching ConceptDescriptions from   external IEC-CDD source
 - **Ports:**  
