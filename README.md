@@ -1,5 +1,8 @@
 # concept store
 
+As long as there is no release tracked in this repository. we don't reccomend productive use. Use at own risk.
+
+
 ## Description
 
 This project is a small **HTTP server written in Go** that loads **ConceptDescriptions** (based on the [Asset Administration Shell (AAS) Standard 3.0](https://industrialdigitaltwin.org)) from a local JSON file, stores them in memory, and serves them through a simple REST API in **JSON** or **XML** format.  
